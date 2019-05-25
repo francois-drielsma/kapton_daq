@@ -1,26 +1,22 @@
 ## Package description
 
-Package that centralizes all the resources necessary to setup the data
-acquisition for the Kapton resistivity measurement at cryogenic temperatures
+Package that centralizes all the resources necessary
+to setup the data acquisition for the Kapton sheet
+resistance measurement at cryogenic temperatures
 
 ## Install the InstrumentKit repository
 
 1. Pull the repository
 
 ```
-        git clone https://github.com/Galvant/InstrumentKit
+    git clone https://github.com/Galvant/InstrumentKit
 ```
 
 2. Install the package
 
 ```
-        cd InstrumentKit/
-        python setup.py install
-```
-or
-```
-        cd InstrumentKit/
-        python3 setup.py install
+    cd InstrumentKit/
+    python(3) setup.py install
 ```
 
 ## Enable serial connections
@@ -39,33 +35,56 @@ or
 1. Connect the device and identify its vendor and model ID:
 
 ```
-        lsusb
-        Bus 001 Device 016: ID 05e6:6500 Keithley Instruments 
+    lsusb
+    Bus 001 Device 016: ID 05e6:6500 Keithley Instruments 
 ```
 
 2. Add udev rules to handle the device
 
 ```
-        sudo vim /etc/udev/rules.d/usbtmc.rules
+    sudo vim /etc/udev/rules.d/usbtmc.rules
 ```
 then write
 ```
-        # USBTMC instruments
+    # USBTMC instruments
 
-        # Keithley DMM6500
-        SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="05e6", ATTRS{idProduct}=="6500", GROUP="usbtmc", MODE="0660"
+    # Keithley DMM6500
+    SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="05e6", ATTRS{idProduct}=="6500", GROUP="usbtmc", MODE="0660"
 
-        # Devices
-        KERNEL=="usbtmc/*",       MODE="0660", GROUP="usbtmc"
-        KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"
+    # Devices
+    KERNEL=="usbtmc/*",       MODE="0660", GROUP="usbtmc"
+    KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"
 ```
 
 3. Add the corresponding group, add yourself as user
 
 ```
-        sudo addgroup usbtmc
-        sudo adduser user usbtmc
+    sudo addgroup usbtmc
+    sudo adduser user usbtmc
 ```
 
 4. Reboot the computer
 
+## Execute the DAQ
+
+Simply run
+
+```
+    python(3) daq.py
+```
+and it will save the data as a CSV file to
+```
+    data/(date)_kapton_daq.csv
+```
+
+## Draw the output
+
+Simply run
+
+```
+    python(3) draw_data.py data/(date)_kapton_daq.csv
+```
+and it will save the plots as
+```
+    output/(date)_(measurement).pdf
+```
