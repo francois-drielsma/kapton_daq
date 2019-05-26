@@ -3,6 +3,7 @@ log
 weights
 *.txt
 *.csv
+*.pdf
 *.root
 *.hdf5
 *.h5
