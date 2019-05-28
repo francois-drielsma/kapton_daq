@@ -56,7 +56,7 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
         readings[i] = m.scale*m.inst.measure(m.meas)
     
     # Append the output
-    vals = [time.time()]
+    vals = [time.time()-init_time]
     vals.extend(readings)
     output.record(keys, vals)
     output.write()
