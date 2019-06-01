@@ -18,19 +18,19 @@ OUTPUT_FILE_NAME = 'kapton_daq'
 # Add all the required measurements to the readout chain
 meas = []
 
-inst = ik.generic_scpi.SCPIMultimeter.open_file('/dev/usbtmc0')
+dci_inst = ik.generic_scpi.SCPIMultimeter.open_file('/dev/usbtmc0')
 dci = Measurement(
-        inst = inst,
-        meas = insts[0].Mode.current_dc,
+        inst = dci_inst,
+        meas = dci_inst.Mode.current_dc,
         scale = 1.e9,
         name = 'Current',
         unit = 'nA')
 meas.append(dci)
 
-inst = ik.fluke.Fluke3000.open_serial('/dev/ttyUSB0', 115200)
+temp_inst = ik.fluke.Fluke3000.open_serial('/dev/ttyUSB0', 115200)
 temp = Measurement(
-        inst = inst,
-        meas = inst.Mode.temperature,
+        inst = temp_inst,
+        meas = temp_inst.Mode.temperature,
         scale = 1.,
         name = 'Temperature',
         unit = 'C')
@@ -43,7 +43,7 @@ print(output_file)
 output = CSVData(output_file)
 
 # Create dictionary keys
-keys = []
+keys = ['time']
 for m in meas:
     keys.append('{} [{}]'.format(m.name, m.unit))
 
@@ -54,12 +54,16 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
     # Read
     for i, m in enumerate(meas):
         readings[i] = m.scale*m.inst.measure(m.meas)
+        
+    if 0. in readings: # TODO failed temp readouts
+        continue
     
     # Append the output
     vals = [time.time()-init_time]
     vals.extend(readings)
     output.record(keys, vals)
     output.write()
+    output.flush()
 
     # Wait for next measurement if requested
     time.sleep(REFRESH_RATE)

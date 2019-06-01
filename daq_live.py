@@ -12,6 +12,7 @@ import datetime
 # Take the last data file as an input for the visualizer
 data_dir = 'data'
 files = [join(data_dir, f) for f in listdir(data_dir)]
+files.sort()
 DATAFILE = files[-1]
 
 keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
@@ -146,9 +147,8 @@ app.layout = html.Div([
                 id='dropdown-interval-control',
                 options=[
                     {'label': 'No Updates', 'value': 'no'},
-                    {'label': 'Slow Updates (5s)', 'value': 'slow'},
-                    {'label': 'Regular Updates (1s)', 'value': 'regular'},
-                    {'label': 'Fast Update (0.5s)', 'value': 'fast'}
+                    {'label': 'Regular Updates (5s)', 'value': 'regular'},
+                    {'label': 'Fast Update (2s)', 'value': 'fast'}
                 ],
                 value='regular',
                 className='five columns',
@@ -317,8 +317,9 @@ def update_interval_log_update(interval_rate):
 # when the file selection dropdown is activatived.
 # The refresh rate is expressed in [ms]
 @app.callback(Output('run-log-storage', 'children'),
-              [Input('dropdown-file-selection', 'value')])
-def update_data_file(file_selection):
+              [Input('interval-log-update', 'n_intervals'),
+               Input('dropdown-file-selection', 'value')])
+def update_data_file(_, file_selection):
 
     try:
         global DATAFILE
