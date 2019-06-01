@@ -302,12 +302,9 @@ def update_graph(run_log_json,
               [Input('dropdown-interval-control', 'value')])
 def update_interval_log_update(interval_rate):
     if interval_rate == 'fast':
-        return 500
+        return 2 * 1000
 
     elif interval_rate == 'regular':
-        return 1000
-
-    elif interval_rate == 'slow':
         return 5 * 1000
 
     elif interval_rate == 'no':
