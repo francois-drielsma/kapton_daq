@@ -5,9 +5,11 @@ from dash.dependencies import Input, Output, State
 from plotly import tools
 import plotly.graph_objs as go
 import pandas as pd
-from os import listdir
+from os import listdir, killpg, setsid
 from os.path import join
+import signal
 import datetime
+import subprocess
 
 # Take the last data file as an input for the visualizer
 data_dir = 'data'
@@ -32,13 +34,13 @@ def data_keys(data_file):
 def div_graph():
     """
     Generates an html Div containing graph and control
-    options for smoothing and display, given the list of keys
+    options for display
     """
-    mead_div = html.Div(id=f'div-current-daq-value')
+    mead_div = html.Div(id='div-current-daq-value')
     return html.Div([
         # Graph division
         html.Div(
-            id=f'div-daq-graph',
+            id='div-daq-graph',
             className="ten columns"
         ),
 
@@ -51,38 +53,10 @@ def div_graph():
                 dcc.Checklist(
                     options = [{'label': key, 'value': key} for key in keys],
                     values=keys,
-                    id=f'checklist-display-options-daq'
+                    id='checklist-display-options-daq'
                 )
             ],
                 style={'margin-top': '10px'}
-            ),
-
-            # Checklist of the measurements to smooth
-            html.Div([
-                html.P("Smoothing:", style={'font-weight': 'bold', 'margin-bottom': '0px'}),
-
-                dcc.Checklist(
-                    options = [{'label': key, 'value': key} for key in keys],
-                    values=[],
-                    id=f'checklist-smoothing-options-daq'
-                )
-            ],
-                style={'margin-top': '10px'}
-            ),
-
-            # Slider that determines the level of smoothing
-            html.Div([
-                dcc.Slider(
-                    min=0,
-                    max=1,
-                    step=0.2,
-                    marks={i / 5: '{}'.format(i / 5) for i in range(0, 6)},
-                    value=0.6,
-                    updatemode='drag',
-                    id=f'slider-smoothing-daq'
-                )
-            ],
-                style={'margin-bottom': '40px'}
             ),
 
             # Choice of graph display type (overlapped or separated)
@@ -96,10 +70,10 @@ def div_graph():
                         {'label': ' Separate (Horizontal)', 'value': 'separate_horizontal'}
                     ],
                     value='overlap',
-                    id=f'radio-display-mode-daq'
+                    id='radio-display-mode-daq'
                 ),
 
-                html.Div(id=f'div-current-daq-value')
+                html.Div(id='div-current-daq-value')
             ]),
         ],
             className="two columns"
@@ -132,12 +106,26 @@ app.layout = html.Div([
 
         # Div with the file selection and refresh rate
         html.Div([
+            # Buttons that start and stop the DAQ 
+            html.Button(
+                id='start_button',
+                children='Start',
+                className='one column',
+                disabled=False
+            ),
+            html.Button(
+                id='stop_button',
+                children='Stop',
+                className='one column',
+                disabled=True
+            ),
+        
             # Dropdown to choose the file from which to extract the data
             dcc.Dropdown(
                 id='dropdown-file-selection',
                 options=[{'label':f, 'value':f} for f in files],
                 value=DATAFILE,
-                className='five columns',
+                className='four columns',
                 clearable=False,
                 searchable=False
             ),
@@ -151,7 +139,7 @@ app.layout = html.Div([
                     {'label': 'Fast Update (2s)', 'value': 'fast'}
                 ],
                 value='regular',
-                className='five columns',
+                className='four columns',
                 clearable=False,
                 searchable=False
             ),
@@ -185,27 +173,13 @@ app.layout = html.Div([
 # Function that defines the Dash graph object
 def update_graph(run_log_json,
                  display_mode,
-                 checklist_display_options,
-                 checklist_smoothing_options,
-                 slider_smoothing):
+                 checklist_display_options):
     """
     :param run_log_json: the json file containing the data
     :param display_mode: 'separate' or 'overlap'
-    :param checklist_smoothing_options: list of keys to display
-    :param checklist_smoothing_options: list of keys to smooth
-    :param slider_smoothing: value between 0 and 1, at interval of 0.05
+    :param checklist_display_options: list of keys to display
     :return: dcc Graph object containing the updated figures
     """
-
-    # Smooth the data according to the value specified by the slider
-    def smooth(scalars, weight=0.6):
-        last = scalars[0]
-        smoothed = list()
-        for point in scalars:
-            smoothed_val = last * weight + (1 - weight) * point
-            smoothed.append(smoothed_val)
-            last = smoothed_val
-        return smoothed
     
     # Import the data, initialize the graph
     run_log_df = pd.read_json(run_log_json, orient='split')
@@ -223,10 +197,6 @@ def update_graph(run_log_json,
         traces = []
         for key in keys:
             values = run_log_df[key]
-
-            # Apply Smoothing if needed
-            if key in checklist_smoothing_options:
-                values = smooth(values, weight=slider_smoothing)
 
             traces.append(go.Scatter(
                 x=time,
@@ -294,6 +264,36 @@ def update_graph(run_log_json,
         return dcc.Graph(figure=figure, id='graph')
         
     return dcc.Graph(id='graph')
+    
+# App callback that starts the DAQ when requested to do so,
+# records the process ID to know what to kill, 
+# disables the start button and enables the stop button
+@app.callback([Output('start_button', 'value'),
+               Output('start_button', 'disabled')],
+              [Input('start_button', 'n_clicks'),
+               Input('stop_button', 'n_clicks')])
+def start_daq(nstart, nstop):
+    if nstart is None or nstart == nstop:
+        return '', False
+    
+    proc = subprocess.Popen(['python3', 'daq.py'], preexec_fn=setsid)
+    pid = proc.pid
+    return str(pid), True
+    
+# App callback that stops the DAQ when requested to do so,
+# disables the stop button and enables the start button
+@app.callback(Output('stop_button', 'disabled'),
+              [Input('start_button', 'n_clicks'),
+               Input('stop_button', 'n_clicks')],
+              [State('start_button', 'value')])
+def stop_daq(nstart, nstop, pid):
+    if nstart != nstop:
+        return False
+    if nstop is None:
+        return True
+
+    killpg(int(pid), signal.SIGTERM)
+    return True
 
 # App callback that updates the refresh rate of the graph 
 # when the interval control dropdown is activatived.
@@ -330,17 +330,17 @@ def update_data_file(_, file_selection):
 
     return json
     
-# App callback that updates the list of keys
-# when the file changes
-@app.callback([dash.dependencies.Output('checklist-display-options-daq', 'options'),
-               dash.dependencies.Output('checklist-display-options-daq', 'values'),
-               dash.dependencies.Output('checklist-smoothing-options-daq', 'options'),
-               dash.dependencies.Output('checklist-smoothing-options-daq', 'values')],
-              [dash.dependencies.Input('run-log-storage', 'children')])
-def update_options(_):
+# App callback that updates the list of data keys
+# when the file changes, necessary as not all files
+# contain the same measurements
+@app.callback([Output('checklist-display-options-daq', 'options'),
+               Output('checklist-display-options-daq', 'values')],
+              [Input('dropdown-file-selection', 'value')])
+def update_options(file_selection):
+    DATAFILE = file_selection
     keys = data_keys(DATAFILE)
-    options = [{'label': key, 'value': key} for key in keys]
-    return options, keys, options, []
+    options = [{'label': key, 'value': key} for key in keys]    
+    return options, keys
 
 # App callback that prints the elapsed time
 # whenever the page is refreshed (inherits from run-log-storage)
@@ -358,20 +358,14 @@ def update_div_time_display(run_log_json):
 @app.callback(Output('div-daq-graph', 'children'),
               [Input('run-log-storage', 'children'),
                Input('radio-display-mode-daq', 'value'),
-               Input('checklist-display-options-daq', 'values'),
-               Input('checklist-smoothing-options-daq', 'values'),
-               Input('slider-smoothing-daq', 'value')])
+               Input('checklist-display-options-daq', 'values')])
 def update(run_log_json,
            display_mode,
-           checklist_display_options,
-           checklist_smoothing_options,
-           slider_smoothing):
+           checklist_display_options):
 
     graph = update_graph(run_log_json,                         
                          display_mode,
-                         checklist_display_options,
-                         checklist_smoothing_options,
-                         slider_smoothing)
+                         checklist_display_options)
 
     return [graph]
 
