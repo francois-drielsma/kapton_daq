@@ -9,14 +9,14 @@ resistance measurement at cryogenic temperatures
 1. Pull the repository
 
 ```
-    git clone https://github.com/Galvant/InstrumentKit
+    git clone https://github.com/francois-drielsma/InstrumentKit
 ```
 
 2. Install the package
 
 ```
     cd InstrumentKit/
-    python(3) setup.py install
+    python3 setup.py install
 ```
 
 ## Enable serial connections
@@ -65,12 +65,31 @@ then write
 
 4. Reboot the computer
 
-## Execute the DAQ
+## Use the live DAQ viewer
 
 Simply run
 
 ```
-    python(3) daq.py
+    python3 daq_live.py
+```
+and then open the app into a browser (click on the link in the terminal).
+
+The DAQ live viewer currently contains the following features:
+ - Start and stop button which run daq.py in the background
+ - Data file selector (lists the content of the data directory)
+ - Refresh rate (regular, fast or stopped)
+ - Time elapsed in the DAQ process
+ - Graph(s) of the measurements performed by the DAQ
+ - Measurement display selection
+ - Display style (overlapped, separated vertically or horizontally)
+ - Last readings
+
+## Execute the DAQ standalone
+
+Simply run
+
+```
+    python3 daq.py
 ```
 and it will save the data as a CSV file to
 ```
@@ -82,7 +101,7 @@ and it will save the data as a CSV file to
 Simply run
 
 ```
-    python(3) draw_data.py data/(date)_kapton_daq.csv
+    python3 draw_data.py data/(date)_kapton_daq.csv
 ```
 and it will save the plots as
 ```
