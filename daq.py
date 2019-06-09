@@ -39,7 +39,6 @@ meas.append(temp)
 # Initialize the output file
 output_file = "data/{}_{}.csv".format(\
         time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()), OUTPUT_FILE_NAME)
-print(output_file)
 output = CSVData(output_file)
 
 # Create dictionary keys

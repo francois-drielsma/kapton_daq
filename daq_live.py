@@ -8,14 +8,15 @@ import pandas as pd
 from os import listdir, killpg, setsid
 from os.path import join
 import signal
+import time
 import datetime
 import subprocess
 
 # Take the last data file as an input for the visualizer
 data_dir = 'data'
-files = [join(data_dir, f) for f in listdir(data_dir)]
-files.sort()
-DATAFILE = files[-1]
+data_files = [join(data_dir, f) for f in listdir(data_dir)]
+data_files.sort()
+DATAFILE = data_files[-1]
 
 keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
 keys.remove('time')
@@ -123,7 +124,7 @@ app.layout = html.Div([
             # Dropdown to choose the file from which to extract the data
             dcc.Dropdown(
                 id='dropdown-file-selection',
-                options=[{'label':f, 'value':f} for f in files],
+                options=[{'label':f, 'value':f} for f in data_files],
                 value=DATAFILE,
                 className='four columns',
                 clearable=False,
@@ -267,18 +268,40 @@ def update_graph(run_log_json,
     
 # App callback that starts the DAQ when requested to do so,
 # records the process ID to know what to kill, 
-# disables the start button and enables the stop button
+# disables the start button and enables the stop button,
+# refreshes the list of files, set the file to last
 @app.callback([Output('start_button', 'value'),
-               Output('start_button', 'disabled')],
+               Output('start_button', 'disabled'),
+               Output('dropdown-file-selection', 'options'),
+               Output('dropdown-file-selection', 'value')],
               [Input('start_button', 'n_clicks'),
                Input('stop_button', 'n_clicks')])
 def start_daq(nstart, nstop):
+    # If first initialization or stop button pressed, enable the start button
+    global data_files
     if nstart is None or nstart == nstop:
-        return '', False
+        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE
+
+    # Count the amount of files currently in the data directory
+    n_files = len(listdir(data_dir))
     
+    # Initialize the process, record the process ID
     proc = subprocess.Popen(['python3', 'daq.py'], preexec_fn=setsid)
     pid = proc.pid
-    return str(pid), True
+    
+    # Wait for the program to produce a new CSV file
+    time_out = 60
+    init_time = time.time()
+    while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
+        time.sleep(0.2)
+    
+    # Update the list of data files, set the DAQ update as current
+    data_files = [join(data_dir, f) for f in listdir(data_dir)]
+    data_files.sort()
+    options = [{'label':f, 'value':f} for f in data_files]
+    
+    # Disable the start button
+    return str(pid), True, options, data_files[-1]
     
 # App callback that stops the DAQ when requested to do so,
 # disables the stop button and enables the start button
@@ -287,12 +310,18 @@ def start_daq(nstart, nstop):
                Input('stop_button', 'n_clicks')],
               [State('start_button', 'value')])
 def stop_daq(nstart, nstop, pid):
+    # If the start button was pressed, enable the stop button
     if nstart != nstop:
         return False
+        
+    # If first initialization, disable the stop button
     if nstop is None:
         return True
 
+    # Send a kill signal to the DAQ
     killpg(int(pid), signal.SIGTERM)
+    
+    # Disable the stop button
     return True
 
 # App callback that updates the refresh rate of the graph 
