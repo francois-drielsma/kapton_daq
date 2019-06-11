@@ -2,6 +2,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+import dash_daq as daq
 from plotly import tools
 import plotly.graph_objs as go
 import pandas as pd
@@ -108,17 +109,20 @@ app.layout = html.Div([
         # Div with the file selection and refresh rate
         html.Div([
             # Buttons that start and stop the DAQ 
-            html.Button(
-                id='start_button',
+            daq.StopButton(
+                id='start-button',
                 children='Start',
                 className='one column',
                 disabled=False
             ),
-            html.Button(
-                id='stop_button',
+            daq.StopButton(
+                id='stop-button',
                 children='Stop',
                 className='one column',
                 disabled=True
+            ),
+            dcc.Store(
+                id='daq-process-id'
             ),
         
             # Dropdown to choose the file from which to extract the data
@@ -270,12 +274,12 @@ def update_graph(run_log_json,
 # records the process ID to know what to kill, 
 # disables the start button and enables the stop button,
 # refreshes the list of files, set the file to last
-@app.callback([Output('start_button', 'value'),
-               Output('start_button', 'disabled'),
+@app.callback([Output('daq-process-id', 'data'),
+               Output('start-button', 'disabled'),
                Output('dropdown-file-selection', 'options'),
                Output('dropdown-file-selection', 'value')],
-              [Input('start_button', 'n_clicks'),
-               Input('stop_button', 'n_clicks')])
+              [Input('start-button', 'n_clicks'),
+               Input('stop-button', 'n_clicks')])
 def start_daq(nstart, nstop):
     # If first initialization or stop button pressed, enable the start button
     global data_files
@@ -305,10 +309,10 @@ def start_daq(nstart, nstop):
     
 # App callback that stops the DAQ when requested to do so,
 # disables the stop button and enables the start button
-@app.callback(Output('stop_button', 'disabled'),
-              [Input('start_button', 'n_clicks'),
-               Input('stop_button', 'n_clicks')],
-              [State('start_button', 'value')])
+@app.callback(Output('stop-button', 'disabled'),
+              [Input('start-button', 'n_clicks'),
+               Input('stop-button', 'n_clicks')],
+              [State('daq-process-id', 'data')])
 def stop_daq(nstart, nstop, pid):
     # If the start button was pressed, enable the stop button
     if nstart != nstop:
@@ -319,7 +323,11 @@ def stop_daq(nstart, nstop, pid):
         return True
 
     # Send a kill signal to the DAQ
-    killpg(int(pid), signal.SIGTERM)
+    try:
+        killpg(int(pid), signal.SIGTERM)
+    except:
+        print('The DAQ process has already been terminated')
+        pass
     
     # Disable the stop button
     return True

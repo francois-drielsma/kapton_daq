@@ -4,7 +4,20 @@ Package that centralizes all the resources necessary
 to setup the data acquisition for the Kapton sheet
 resistance measurement at cryogenic temperatures
 
+## Prerequisites
+
+This package is written in Python 3.
+
+The following packages must be installed:
+
+```
+    pip3 install plotly dash dash_daq pandas numpy
+```
+
 ## Install the InstrumentKit repository
+
+The InstrumentKit package supports communications through
+a variety of protocols (GPIB, RS232, USBTMC, etc.)
 
 1. Pull the repository
 
@@ -19,7 +32,7 @@ resistance measurement at cryogenic temperatures
     python3 setup.py install
 ```
 
-## Enable serial connections
+### Enable serial connections
 
 1. Add yourself as user of the tty and dialout groups
 
@@ -30,7 +43,7 @@ resistance measurement at cryogenic temperatures
 
 2. Reboot the computer
 
-## Enable USBTMC devices
+### Enable USBTMC devices
 
 1. Connect the device and identify its vendor and model ID:
 
@@ -65,7 +78,7 @@ then write
 
 4. Reboot the computer
 
-## Use the live DAQ viewer
+## Use the live DAQ
 
 Simply run
 
@@ -84,7 +97,7 @@ The DAQ live viewer currently contains the following features:
  - Display style (overlapped, separated vertically or horizontally)
  - Last readings
 
-## Execute the DAQ standalone
+### Execute the DAQ standalone
 
 Simply run
 
@@ -96,7 +109,7 @@ and it will save the data as a CSV file to
     data/(date)_kapton_daq.csv
 ```
 
-## Draw the output
+### Draw the output
 
 Simply run
 
