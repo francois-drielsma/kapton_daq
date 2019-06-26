@@ -1,31 +1,41 @@
 from __future__ import unicode_literals
-
 import sys
-import instruments as ik
 import time
-import matplotlib.pyplot as plt
-import numpy as np
 import json
+import argparse
 from collections import namedtuple
+import numpy as np
+import matplotlib.pyplot as plt
+import instruments as ik
 from utils.logger import CSVData
 
-# Check if a json file is provided, use the default otherwise
+# Parse commande line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--config', type=str,
+                    help="Sets the config file")
+parser.add_argument('--name', type=str,
+                    help="Sets the output file name")
+parser.add_argument('--sampling', type=str,
+                    help="Sets the amount of time the DAQ runs for")
+parser.add_argument('--refresh', type=str,
+                    help="Sets the frequency at which the DAQ takes data")
+args = parser.parse_args()
+
+# Load the configuration
 cfg_name = 'config_default.json'
-if 'json' in sys.argv[-1]:
-    cfg_name = sys.argv[-1]
+if args.config:
+    cfg_name = args.config
 
 cfg_file = open(cfg_name)
 cfg = json.load(cfg_file)
 
-# Structure that contains the measurements to be recorded at each cycle
-Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
-
 # Global parameters
-SAMPLING_TIME = cfg['sampling_time']
-REFRESH_RATE = cfg['refresh_rate']
-OUTPUT_FILE_NAME = cfg['output_file_name']
+SAMPLING_TIME = cfg['sampling_time'] if not args.sampling else args.sampling
+REFRESH_RATE = cfg['refresh_rate'] if not args.refresh else args.refresh
+OUTPUT_NAME = cfg['output_name'] if not args.name else args.name
 
 # Add all the required measurements to the readout chain
+Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
 measures = []
 for key in cfg['measurements'].keys():
     # Determine the instrument to use
@@ -64,7 +74,7 @@ for key in cfg['measurements'].keys():
 
 # Initialize the output file
 output_file = "data/{}_{}.csv".format(\
-        time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()), OUTPUT_FILE_NAME)
+        time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()), OUTPUT_NAME)
 output = CSVData(output_file)
 
 # Create dictionary keys
