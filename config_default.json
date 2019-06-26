@@ -1,0 +1,23 @@
+{
+  "sampling_time":0.0,
+  "refresh_rate":0.0,
+  "output_file_name":"kapton_daq",
+  "measurements":{
+    "current":{
+      "protocol":"usbtmc",
+      "device":"/dev/usbtmc0",
+      "type":"current",
+      "scale":1000000000,
+      "name":"Current",
+      "unit":"nA"      
+    },
+    "temperature":{
+      "protocol":"serial",
+      "device":"/dev/ttyUSB0",
+      "type":"temperature",
+      "scale":1,
+      "name":"Temperature",
+      "unit":"C"
+    }
+  }
+}
