@@ -328,8 +328,7 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     n_files = len(listdir(data_dir))
     
     # Set the arguments to be passed to the daq process
-    args = ['python3', 'daq.py']
-    args += ['--config', cfg_name]
+    args = ['python3', 'daq.py', '--config', cfg_name]
     if len(output_name):
         args += ['--name', output_name]
     

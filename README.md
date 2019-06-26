@@ -37,8 +37,8 @@ a variety of protocols (GPIB, RS232, USBTMC, etc.)
 1. Add yourself as user of the tty and dialout groups
 
 ```
-	sudo adduser user tty
-	sudo adduser user dialout
+    sudo adduser user tty
+    sudo adduser user dialout
 ``` 
 
 2. Reboot the computer
@@ -89,6 +89,8 @@ and then open the app into a browser (click on the link in the terminal).
 
 The DAQ live viewer currently contains the following features:
  - Start and stop button which run daq.py in the background
+ - Configuration file selector (lists the content of the config directory)
+ - Name input box (to specify the DAQ output file name)
  - Data file selector (lists the content of the data directory)
  - Refresh rate (regular, fast or stopped)
  - Time elapsed in the DAQ process
@@ -102,14 +104,18 @@ The DAQ live viewer currently contains the following features:
 Simply run
 
 ```
-    python3 daq.py
+    python3 daq.py --name NAME --config config/config_xxxxx.json
 ```
 and it will save the data as a CSV file to
 ```
-    data/(date)_kapton_daq.csv
+    data/(date)_NAME.csv
+```
+For more information about the available arguments, run
+```
+    python3 daq.py -h
 ```
 
-### Draw the output
+### Draw the output separately
 
 Simply run
 
