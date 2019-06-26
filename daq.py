@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str,
                     help="Sets the config file")
 parser.add_argument('--name', type=str,
-                    help="Sets the output file name")
+                    help="Sets the output name")
 parser.add_argument('--sampling', type=str,
                     help="Sets the amount of time the DAQ runs for")
 parser.add_argument('--refresh', type=str,
@@ -22,7 +22,7 @@ parser.add_argument('--refresh', type=str,
 args = parser.parse_args()
 
 # Load the configuration
-cfg_name = 'config_default.json'
+cfg_name = 'config/config_default.json'
 if args.config:
     cfg_name = args.config
 

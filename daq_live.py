@@ -22,6 +22,10 @@ DATAFILE = data_files[-1]
 keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
 keys.remove('time')
 
+# Make a list of the available configurations
+config_dir = 'config'
+config_files = [join(config_dir, f) for f in listdir(config_dir)]
+
 # Initialize the app
 app = dash.Dash(__name__)
 server = app.server
@@ -105,7 +109,6 @@ app.layout = html.Div([
 
     # Main HTML division
     html.Div([
-
         # Div with the file selection and refresh rate
         html.Div([
             # Buttons that start and stop the DAQ 
@@ -115,14 +118,42 @@ app.layout = html.Div([
                 className='one column',
                 disabled=False
             ),
+            dcc.Store(
+                id='daq-process-id'
+            ),
+
+            # DAQ config file input block
+            dcc.Dropdown(
+                id='dropdown-config-selection',
+                options=[{'label':f, 'value':f} for f in config_files],
+                value='config/config_default.json',
+                className='five columns',
+                clearable=False,
+                searchable=False,
+                disabled=False
+            ),
+
+            # DAQ file name input block
+            dcc.Input(
+                id='input-name',
+                placeholder='Enter an output name...',
+                type='text',
+                value='',
+                disabled=False
+            )
+        ],
+            id='div-file-control-0',
+            className='row'
+        ),
+
+        # Div with the file selection and refresh rate
+        html.Div([
+            # Buttons that start and stop the DAQ 
             daq.StopButton(
                 id='stop-button',
                 children='Stop',
                 className='one column',
                 disabled=True
-            ),
-            dcc.Store(
-                id='daq-process-id'
             ),
         
             # Dropdown to choose the file from which to extract the data
@@ -130,7 +161,7 @@ app.layout = html.Div([
                 id='dropdown-file-selection',
                 options=[{'label':f, 'value':f} for f in data_files],
                 value=DATAFILE,
-                className='four columns',
+                className='five columns',
                 clearable=False,
                 searchable=False
             ),
@@ -156,7 +187,8 @@ app.layout = html.Div([
             )
         ],
             id='div-file-control',
-            className='row'
+            className='row',
+            style={'marginTop': 10}
         ),
 
         # Element that allows you to update components on a predefined interval
@@ -273,21 +305,33 @@ def update_graph(run_log_json,
 # App callback that starts the DAQ when requested to do so,
 # records the process ID to know what to kill, 
 # disables the start button and enables the stop button,
-# refreshes the list of files, set the file to last
+# refreshes the list of files, set the file to last.
+# Gets the configuration from the drop down menu,
+# gets the file name from the input box.
 @app.callback([Output('daq-process-id', 'data'),
                Output('start-button', 'disabled'),
                Output('dropdown-file-selection', 'options'),
-               Output('dropdown-file-selection', 'value')],
+               Output('dropdown-file-selection', 'value'),
+               Output('dropdown-config-selection', 'disabled'),
+               Output('input-name', 'disabled')],
               [Input('start-button', 'n_clicks'),
-               Input('stop-button', 'n_clicks')])
-def start_daq(nstart, nstop):
+               Input('stop-button', 'n_clicks')],
+              [State('dropdown-config-selection', 'value'),
+               State('input-name', 'value')])
+def start_daq(nstart, nstop, cfg_name, output_name):
     # If first initialization or stop button pressed, enable the start button
     global data_files
     if nstart is None or nstart == nstop:
-        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE
+        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE, False, False
 
     # Count the amount of files currently in the data directory
     n_files = len(listdir(data_dir))
+    
+    # Set the arguments to be passed to the daq process
+    args = ['python3', 'daq.py']
+    args += ['--config', cfg_name]
+    if len(output_name):
+        args += ['--name', output_name]
     
     # Initialize the process, record the process ID
     proc = subprocess.Popen(['python3', 'daq.py'], preexec_fn=setsid)
@@ -305,7 +349,7 @@ def start_daq(nstart, nstop):
     options = [{'label':f, 'value':f} for f in data_files]
     
     # Disable the start button
-    return str(pid), True, options, data_files[-1]
+    return str(pid), True, options, data_files[-1], True, True
     
 # App callback that stops the DAQ when requested to do so,
 # disables the stop button and enables the start button
