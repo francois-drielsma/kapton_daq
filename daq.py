@@ -58,9 +58,9 @@ for key in cfg['measurements'].keys():
     meas_pro = measure['protocol']
     meas_dev = measure['device']
     if meas_pro == 'usbtmc':
-        inst.open_file(meas_dev)
+        inst = inst.open_file(meas_dev)
     elif meas_pro == 'serial':
-        inst.open_serial(meas_dev, 115200)
+        inst = inst.open_serial(meas_dev, 115200)
     else:
         raise(Exception('Protocol not supported: '+meas_pro))
         

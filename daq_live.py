@@ -333,7 +333,7 @@ def start_daq(nstart, nstop, cfg_name, output_name):
         args += ['--name', output_name]
     
     # Initialize the process, record the process ID
-    proc = subprocess.Popen(['python3', 'daq.py'], preexec_fn=setsid)
+    proc = subprocess.Popen(args, preexec_fn=setsid)
     pid = proc.pid
     
     # Wait for the program to produce a new CSV file
@@ -415,7 +415,7 @@ def update_data_file(_, file_selection):
 # contain the same measurements
 @app.callback([Output('checklist-display-options-daq', 'options'),
                Output('checklist-display-options-daq', 'values')],
-              [Input('dropdown-file-selection', 'value')])
+              [Input('run-log-storage', 'children')])
 def update_options(file_selection):
     DATAFILE = file_selection
     keys = data_keys(DATAFILE)
