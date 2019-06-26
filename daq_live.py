@@ -6,7 +6,7 @@ import dash_daq as daq
 from plotly import tools
 import plotly.graph_objs as go
 import pandas as pd
-from os import listdir, killpg, setsid
+from os import listdir, killpg, setsid, remove
 from os.path import join
 import signal
 import time
@@ -25,6 +25,9 @@ keys.remove('time')
 # Make a list of the available configurations
 config_dir = 'config'
 config_files = [join(config_dir, f) for f in listdir(config_dir)]
+
+# Set the device directory
+dev_dir = 'devices'
 
 # Initialize the app
 app = dash.Dash(__name__)
@@ -135,12 +138,34 @@ app.layout = html.Div([
 
             # DAQ file name input block
             dcc.Input(
-                id='input-name',
+                id='input-output-name',
                 placeholder='Enter an output name...',
                 type='text',
                 value='',
                 disabled=False
-            )
+            ),
+            
+            # DAQ virtual devices setter
+            dcc.Dropdown(
+                id='dropdown-virtual-selection',
+                options=[],
+                className='two columns',
+                clearable=False,
+                searchable=False,
+                disabled=False
+            ),
+            dcc.Input(
+                id='input-virtual-value',
+                placeholder='Enter a value...',
+                type='text',
+                value='',
+                disabled=False
+            ),
+            html.Button(
+                id='button-virtual-set',
+                children='Set virtual',
+                disabled=False
+            )     
         ],
             id='div-file-control-0',
             className='row'
@@ -313,16 +338,17 @@ def update_graph(run_log_json,
                Output('dropdown-file-selection', 'options'),
                Output('dropdown-file-selection', 'value'),
                Output('dropdown-config-selection', 'disabled'),
-               Output('input-name', 'disabled')],
+               Output('input-output-name', 'disabled'),
+               Output('dropdown-virtual-selection', 'options')],
               [Input('start-button', 'n_clicks'),
                Input('stop-button', 'n_clicks')],
               [State('dropdown-config-selection', 'value'),
-               State('input-name', 'value')])
+               State('input-output-name', 'value')])
 def start_daq(nstart, nstop, cfg_name, output_name):
     # If first initialization or stop button pressed, enable the start button
     global data_files
     if nstart is None or nstart == nstop:
-        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE, False, False
+        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE, False, False, []
 
     # Count the amount of files currently in the data directory
     n_files = len(listdir(data_dir))
@@ -341,14 +367,18 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     init_time = time.time()
     while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
         time.sleep(0.2)
+        
+    # Update the list of virtual devices
+    dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+    dev_options = [{'label':f, 'value':f} for f in dev_files]
     
     # Update the list of data files, set the DAQ update as current
     data_files = [join(data_dir, f) for f in listdir(data_dir)]
     data_files.sort()
-    options = [{'label':f, 'value':f} for f in data_files]
+    data_options = [{'label':f, 'value':f} for f in data_files]
     
     # Disable the start button
-    return str(pid), True, options, data_files[-1], True, True
+    return str(pid), True, data_options, data_files[-1], True, True, dev_options
     
 # App callback that stops the DAQ when requested to do so,
 # disables the stop button and enables the start button
@@ -371,9 +401,27 @@ def stop_daq(nstart, nstop, pid):
     except:
         print('The DAQ process has already been terminated')
         pass
+        
+    # Delete the virtual devices
+    dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+    for dev in dev_files:
+        remove(dev)
     
     # Disable the stop button
     return True
+    
+# App callback that sets the value of the selected virtual device
+@app.callback(Output('button-virtual-set', 'value'),
+              [Input('button-virtual-set', 'n_clicks')],
+              [State('dropdown-virtual-selection', 'value'),
+               State('input-virtual-value', 'value')])
+def set_virtual(nclicks, virtual_name, virtual_value):
+    if nclicks is None:
+        return ''
+        
+    with open(virtual_name, 'a+') as virtual_file:
+        virtual_file.write('\n'+virtual_value)
+    return ''
 
 # App callback that updates the refresh rate of the graph 
 # when the interval control dropdown is activatived.
