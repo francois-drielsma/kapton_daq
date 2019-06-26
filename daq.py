@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import instruments as ik
 from utils.logger import CSVData
+from utils.virtual_device import Virtual
 
 # Parse commande line arguments
 parser = argparse.ArgumentParser()
@@ -15,9 +16,9 @@ parser.add_argument('--config', type=str,
                     help="Sets the config file")
 parser.add_argument('--name', type=str,
                     help="Sets the output name")
-parser.add_argument('--sampling', type=str,
+parser.add_argument('--sampling', type=float,
                     help="Sets the amount of time the DAQ runs for")
-parser.add_argument('--refresh', type=str,
+parser.add_argument('--refresh', type=float,
                     help="Sets the frequency at which the DAQ takes data")
 args = parser.parse_args()
 
@@ -51,6 +52,9 @@ for key in cfg['measurements'].keys():
     elif meas_type == 'temperature':
         inst = ik.fluke.Fluke3000
         meas = inst.Mode.temperature
+    elif meas_type == 'virtual':
+        inst = Virtual(measure['device'], measure['value'])
+        meas = inst.Mode.default
     else:
         raise(Exception('Measurement no supported: '+meas_type))
 
@@ -61,6 +65,8 @@ for key in cfg['measurements'].keys():
         inst = inst.open_file(meas_dev)
     elif meas_pro == 'serial':
         inst = inst.open_serial(meas_dev, 115200)
+    elif meas_pro == 'virtual':
+        pass
     else:
         raise(Exception('Protocol not supported: '+meas_pro))
         
