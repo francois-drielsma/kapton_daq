@@ -10,6 +10,7 @@ from os import listdir, killpg, setsid, remove
 from os.path import join
 import signal
 import time
+import json
 import datetime
 import subprocess
 
@@ -33,36 +34,53 @@ dev_dir = 'devices'
 app = dash.Dash(__name__)
 server = app.server
 
-# Function that gives you the data keys of a CSV file
+# Function that reads the data keys of a CSV file
 def data_keys(data_file):
     keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
     keys.remove('time')
     return keys
 
-# Function that defines the HTML div that conains the graph and its attributes
-def div_graph():
+# Function that defines the HTML div that contains the DAQ graph
+def div_daq_graph():
     """
-    Generates an html Div containing graph and control
-    options for display
+    Generates an html Div containing DAQ graph and
+    the display options
     """
     mead_div = html.Div(id='div-current-daq-value')
     return html.Div([
         # Graph division
         html.Div(
             id='div-daq-graph',
-            className="ten columns"
+            className="nine columns"
         ),
 
         # List of options for the graph display
         html.Div([
+            # Dropdown to choose the file from which to extract the data
+            dcc.Dropdown(
+                id='dropdown-file-selection',
+                options=[{'label':f.split('/')[-1], 'value':f} for f in data_files],
+                value=DATAFILE,
+                clearable=False,
+                searchable=False,
+                style={'margin-top': '10px'}
+            ),
+            
+            # Box that shows the elapsed time
+            html.Div(
+                id="div-time-display"
+            ),
+        
             # Checklist of the measurements to plot
             html.Div([
-                html.P("Display:", style={'font-weight': 'bold', 'margin-bottom': '0px'}),
+                html.H6("Display selection", style={'font-weight': 'bold',
+                                                    'marginBottom': '0px'}),
 
                 dcc.Checklist(
                     options = [{'label': key, 'value': key} for key in keys],
                     values=keys,
-                    id='checklist-display-options-daq'
+                    id='checklist-display-options-daq',
+                    style={'marginLeft': '20px'}
                 )
             ],
                 style={'margin-top': '10px'}
@@ -70,7 +88,9 @@ def div_graph():
 
             # Choice of graph display type (overlapped or separated)
             html.Div([
-                html.P("Plot Display mode:", style={'font-weight': 'bold', 'margin-bottom': '0px'}),
+                html.H6("Display mode", style={'font-weight': 'bold',
+                                               'marginBottom': '0px',
+                                               'marginTop': '10px'}),
 
                 dcc.RadioItems(
                     options=[
@@ -79,16 +99,203 @@ def div_graph():
                         {'label': ' Separate (Horizontal)', 'value': 'separate_horizontal'}
                     ],
                     value='overlap',
-                    id='radio-display-mode-daq'
+                    id='radio-display-mode-daq',
+                    style={'marginLeft': '20px'}
                 ),
 
                 html.Div(id='div-current-daq-value')
             ]),
         ],
-            className="two columns"
+            className="three columns"
         ),
     ],
-        className="row"
+        className="row",
+        style={
+            "border-radius": "5px",
+            "border-width": "5px",
+            "border": "1px solid rgb(216, 216, 216)",
+            "position": "relative",
+            "height": "460px"
+        }
+    )
+    
+# Function that defines the HTML div that contains the DAQ controls
+def div_daq_controls():
+    """
+    Generates an html Div containing the DAQ controls
+    """
+    mead_div = html.Div(id='div-current-daq-value')
+    return html.Div([
+
+        # Title
+        html.H4('DAQ Controls', style={"textAlign": "center"}),
+        
+        # Start and stop button
+        html.Div([
+            # Buttons that start the DAQ 
+            daq.StopButton(
+                id='start-button',
+                children='Start',
+                className='one column',
+                disabled=False,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "49%",
+                }
+            ),
+            dcc.Store(
+                id='daq-process-id'
+            ),
+            
+            # Buttons that stop the DAQ 
+            daq.StopButton(
+                id='stop-button',
+                children='Stop',
+                className='one column',
+                disabled=True,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "49%",
+                }
+            ),
+        
+        
+        ]),
+        html.Div([
+            dcc.Input(
+                id='input-output-name',
+                placeholder='Enter an output file name...',
+                type='text',
+                value='',
+                disabled=False,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "align-items": "center",
+                    "width": "80%",
+                    'marginTop': '80px',
+                    'marginLeft': "10%"
+                }
+            ),
+            
+            # DAQ config file input block
+            dcc.Dropdown(
+                id='dropdown-config-selection',
+                options=[{'label':f.split('/')[-1], 'value':f} for f in config_files],
+                value='config/config_default.json',
+                className='twelve columns',
+                clearable=False,
+                searchable=False,
+                disabled=False,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "90%",
+                    'marginTop': '5px',
+                    'marginLeft': "5%"
+                }
+            ),
+            
+            # Box that display the config file
+            dcc.Textarea(
+                id="text-config",
+                placeholder=" ",
+                value="",
+                style={
+                    "width": "80%",
+                    "height": "157px",
+                    "marginLeft": "10%",
+                    "marginTop": "10px",
+                },
+                disabled=True
+            )
+        ])
+    ],
+        className="four columns",
+        style={
+            "border-radius": "5px",
+            "border-width": "5px",
+            "border": "1px solid rgb(216, 216, 216)",
+            "position": "relative",
+            "height": "400px",
+            "marginTop": "10px"
+        }
+    )
+
+# Function that defines the HTML div that contains the virtual controls
+def div_virtual_controls():
+    """
+    Generates an html Div containing the DAQ controls
+    """
+    mead_div = html.Div(id='div-current-daq-value')
+    return html.Div([
+
+        # Title
+        html.H4('Virtual Controls', style={"textAlign": "center"}),
+        
+        # Div with the file selection and refresh rate
+        html.Div([
+            
+            # DAQ virtual devices setter
+            daq.StopButton(
+                id='button-virtual-set',
+                children='Set',
+                disabled=True,
+                style={
+                    'marginTop': '10px',
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "100%",
+                }
+            ),
+            
+            dcc.Dropdown(
+                id='dropdown-virtual-selection',
+                options=[],
+                className='twelve columns',
+                clearable=False,
+                searchable=False,
+                disabled=True,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "90%",
+                    'marginTop': '15px',
+                    'marginLeft': "5%"
+                }
+            ),
+            dcc.Input(
+                id='input-virtual-value',
+                placeholder='Enter a value...',
+                type='text',
+                value='',
+                disabled=True,
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "align-items": "center",
+                    "width": "80%",
+                    'marginTop': '10px',
+                    'marginLeft': "10%"
+                }
+            )    
+        ],
+            id='div-file-control-0',
+            className='row',
+            style={'margin-top': 10}
+        )
+    ],
+        className="two columns",
+        style={
+            "border-radius": "5px",
+            "border-width": "5px",
+            "border": "1px solid rgb(216, 216, 216)",
+            "position": "relative",
+            "height": "400px",
+            "marginTop": "10px"
+        }
     )
 
 # Define the layout of the full HTML application
@@ -112,109 +319,6 @@ app.layout = html.Div([
 
     # Main HTML division
     html.Div([
-        # Div with the file selection and refresh rate
-        html.Div([
-            # Buttons that start and stop the DAQ 
-            daq.StopButton(
-                id='start-button',
-                children='Start',
-                className='one column',
-                disabled=False
-            ),
-            dcc.Store(
-                id='daq-process-id'
-            ),
-
-            # DAQ config file input block
-            dcc.Dropdown(
-                id='dropdown-config-selection',
-                options=[{'label':f, 'value':f} for f in config_files],
-                value='config/config_default.json',
-                className='five columns',
-                clearable=False,
-                searchable=False,
-                disabled=False
-            ),
-
-            # DAQ file name input block
-            dcc.Input(
-                id='input-output-name',
-                placeholder='Enter an output name...',
-                type='text',
-                value='',
-                disabled=False
-            ),
-            
-            # DAQ virtual devices setter
-            dcc.Dropdown(
-                id='dropdown-virtual-selection',
-                options=[],
-                className='two columns',
-                clearable=False,
-                searchable=False,
-                disabled=False
-            ),
-            dcc.Input(
-                id='input-virtual-value',
-                placeholder='Enter a value...',
-                type='text',
-                value='',
-                disabled=False
-            ),
-            html.Button(
-                id='button-virtual-set',
-                children='Set virtual',
-                disabled=False
-            )     
-        ],
-            id='div-file-control-0',
-            className='row'
-        ),
-
-        # Div with the file selection and refresh rate
-        html.Div([
-            # Buttons that start and stop the DAQ 
-            daq.StopButton(
-                id='stop-button',
-                children='Stop',
-                className='one column',
-                disabled=True
-            ),
-        
-            # Dropdown to choose the file from which to extract the data
-            dcc.Dropdown(
-                id='dropdown-file-selection',
-                options=[{'label':f, 'value':f} for f in data_files],
-                value=DATAFILE,
-                className='five columns',
-                clearable=False,
-                searchable=False
-            ),
-
-            # Dropdown to choose the refresh rate of the graph
-            dcc.Dropdown(
-                id='dropdown-interval-control',
-                options=[
-                    {'label': 'No Updates', 'value': 'no'},
-                    {'label': 'Regular Updates (5s)', 'value': 'regular'},
-                    {'label': 'Fast Update (2s)', 'value': 'fast'}
-                ],
-                value='regular',
-                className='four columns',
-                clearable=False,
-                searchable=False
-            ),
-
-            # Box that shows the elapsed time
-            html.Div(
-                id="div-time-display",
-                className="two columns"
-            )
-        ],
-            id='div-file-control',
-            className='row',
-            style={'marginTop': 10}
-        ),
 
         # Element that allows you to update components on a predefined interval
         dcc.Interval(
@@ -222,11 +326,17 @@ app.layout = html.Div([
             n_intervals=0
         ),
 
-        # Hidden Div Storing JSON-serialized dataframe of run log
+        # Hidden div that stores the JSON-serialized dataframe of run log
         html.Div(id='run-log-storage', style={'display': 'none'}),
 
-        # The html div storing the graph and display parameters
-        div_graph()
+        # Html div that stores the DAQ graph and display parameters
+        div_daq_graph(),
+        
+        # The html div storing the DAQ controls
+        div_daq_controls(),
+        
+        # The html div storing the virtual measurement control
+        div_virtual_controls()
     ],
         className="container"
     )
@@ -339,7 +449,11 @@ def update_graph(run_log_json,
                Output('dropdown-file-selection', 'value'),
                Output('dropdown-config-selection', 'disabled'),
                Output('input-output-name', 'disabled'),
-               Output('dropdown-virtual-selection', 'options')],
+               Output('dropdown-virtual-selection', 'options'),
+               Output('dropdown-virtual-selection', 'disabled'),
+               Output('input-virtual-value', 'disabled'),
+               Output('button-virtual-set', 'disabled'),
+               Output('interval-log-update', 'interval')],
               [Input('start-button', 'n_clicks'),
                Input('stop-button', 'n_clicks')],
               [State('dropdown-config-selection', 'value'),
@@ -348,7 +462,7 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     # If first initialization or stop button pressed, enable the start button
     global data_files
     if nstart is None or nstart == nstop:
-        return '', False, [{'label':f, 'value':f} for f in data_files], DATAFILE, False, False, []
+        return '', False, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
 
     # Count the amount of files currently in the data directory
     n_files = len(listdir(data_dir))
@@ -375,10 +489,10 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     # Update the list of data files, set the DAQ update as current
     data_files = [join(data_dir, f) for f in listdir(data_dir)]
     data_files.sort()
-    data_options = [{'label':f, 'value':f} for f in data_files]
+    data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
     
     # Disable the start button
-    return str(pid), True, data_options, data_files[-1], True, True, dev_options
+    return str(pid), True, data_options, data_files[-1], True, True, dev_options, False, False, False, 2000
     
 # App callback that stops the DAQ when requested to do so,
 # disables the stop button and enables the start button
@@ -411,7 +525,7 @@ def stop_daq(nstart, nstop, pid):
     return True
     
 # App callback that sets the value of the selected virtual device
-@app.callback(Output('button-virtual-set', 'value'),
+@app.callback(Output('button-virtual-set', 'label'),
               [Input('button-virtual-set', 'n_clicks')],
               [State('dropdown-virtual-selection', 'value'),
                State('input-virtual-value', 'value')])
@@ -422,21 +536,6 @@ def set_virtual(nclicks, virtual_name, virtual_value):
     with open(virtual_name, 'a+') as virtual_file:
         virtual_file.write('\n'+virtual_value)
     return ''
-
-# App callback that updates the refresh rate of the graph 
-# when the interval control dropdown is activatived.
-# The refresh rate is expressed in [ms]
-@app.callback(Output('interval-log-update', 'interval'),
-              [Input('dropdown-interval-control', 'value')])
-def update_interval_log_update(interval_rate):
-    if interval_rate == 'fast':
-        return 2 * 1000
-
-    elif interval_rate == 'regular':
-        return 5 * 1000
-
-    elif interval_rate == 'no':
-        return 24 * 60 * 60 * 1000
         
 # App callback that updates the data file to be read 
 # when the file selection dropdown is activatived.
@@ -479,7 +578,8 @@ def update_div_time_display(run_log_json):
         run_log_df = pd.read_json(run_log_json, orient='split')
         time = int(run_log_df['time'].iloc[-1]-run_log_df['time'].iloc[0])
         time_delta = str(datetime.timedelta(seconds=time))
-        return html.H6(f"Time elapsed: {time_delta}", style={'margin-top': '3px'})
+        return html.H6(f"Time elapsed: {time_delta}", style={'font-weight': 'bold',
+                                                             'margin-top': '3px'})
 
 # App callback that updates the graph 
 # whenever the page is refreshed (inherits from run-log-storage)
@@ -507,18 +607,26 @@ def update_div_current_daq_value(run_log_json):
         values = []
         for key in data_keys(DATAFILE):
             val = run_log_df[key].iloc[-1]
-            values.append(html.Div(f"{key}: {val:.4f}"))
+            values.append(html.Div(f"- {key}: {val:.4f}",
+                                   style={'marginLeft': '20px'}))
         return [
-            html.P(
-                "Current values:",
-                style={
-                    'font-weight': 'bold',
-                    'margin-top': '15px',
-                    'margin-bottom': '0px'
-                },
+            html.H6(
+                "Current values",
+                style={'font-weight': 'bold',
+                       'marginBottom': '0px',
+                       'marginTop': '10px'}
             ),
             *values
         ]
+
+# App callback that displays the configuration 
+@app.callback(Output("text-config", "value"),
+              [Input('dropdown-config-selection', 'value')])
+def serial_monitor(cfg_name):
+
+    with open(cfg_name, 'r') as cfg_file:
+        cfg = json.load(cfg_file)
+        return json.dumps(cfg, indent=2)
 
 # Running the server
 if __name__ == '__main__':
