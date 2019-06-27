@@ -88,16 +88,21 @@ Simply run
 and then open the app into a browser (click on the link in the terminal).
 
 The DAQ live viewer currently contains the following features:
- - Start and stop button which run daq.py in the background
- - Configuration file selector (lists the content of the config directory)
- - Name input box (to specify the DAQ output file name)
- - Data file selector (lists the content of the data directory)
- - Refresh rate (regular, fast or stopped)
- - Time elapsed in the DAQ process
- - Graph(s) of the measurements performed by the DAQ
- - Measurement display selection
- - Display style (overlapped, separated vertically or horizontally)
- - Last readings
+ - Live graph(s) of the measurements performed by the DAQ
+   - Display of elapsed DAQ time
+   - Data file selector
+   - Selection of curves to display
+   - Selection of display style
+   - Display of last readings
+ - DAQ Controls:
+   - Start and stop button which run `daq.py` in the background
+   - Name input box (to specify the DAQ output file name)
+   - Configuration file selector
+   - Configuration file display
+ - Virtual Controls:
+   - Set the value of virtual devices
+
+![kapton_daq](https://francois-drielsma.github.io/kapton_daq/kapton_daq.png)
 
 ### Execute the DAQ standalone
 
