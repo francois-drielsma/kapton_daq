@@ -96,9 +96,6 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
     for i, m in enumerate(measures):
         readings[i] = m.scale*m.inst.measure(m.meas)
         
-    if 0. in readings: # TODO failed temp readouts
-        continue
-    
     # Append the output
     vals = [time.time()-init_time]
     vals.extend(readings)
@@ -106,7 +103,7 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
     output.write()
     output.flush()
 
-    # Wait for next measurement if requested
+    # Wait for next measurement, if requested
     time.sleep(REFRESH_RATE)
 
 # Close the output file

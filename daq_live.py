@@ -607,7 +607,7 @@ def update_div_current_daq_value(run_log_json):
         values = []
         for key in data_keys(DATAFILE):
             val = run_log_df[key].iloc[-1]
-            values.append(html.Div(f"- {key}: {val:.4f}",
+            values.append(html.Div(f"> {key}: {val:.4f}",
                                    style={'marginLeft': '20px'}))
         return [
             html.H6(
