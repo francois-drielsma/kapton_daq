@@ -41,22 +41,30 @@ measures = []
 for key in cfg['measurements'].keys():
     # Determine the instrument to use
     measure = cfg['measurements'][key]
-    inst, meas = None, None
-    meas_type = measure['type']
-    if meas_type == 'current':
+    inst = None
+    meas_inst = measure['instrument']
+    if meas_inst == 'dmm6500':
         inst = ik.generic_scpi.SCPIMultimeter
-        meas = inst.Mode.current_dc
-    elif meas_type == 'voltage':
-        inst = ik.generic_scpi.SCPIMultimeter
-        meas = inst.Mode.voltage_dc
-    elif meas_type == 'temperature':
+    elif meas_inst == 'fluke3000':
         inst = ik.fluke.Fluke3000
-        meas = inst.Mode.temperature
-    elif meas_type == 'virtual':
+    elif meas_inst == 'virtual':
         inst = Virtual(measure['device'], measure['value'])
+    else:
+        raise(Exception('Instrument not supported: '+meas_inst))
+
+    # Determine the quantity requested
+    meas = None
+    meas_quan = measure['quantity']
+    if meas_quan == 'current':
+        meas = inst.Mode.current_dc
+    elif meas_quan == 'voltage':
+        meas = inst.Mode.voltage_dc
+    elif meas_quan == 'temperature':
+        meas = inst.Mode.temperature
+    elif meas_quan == 'virtual':
         meas = inst.Mode.default
     else:
-        raise(Exception('Measurement no supported: '+meas_type))
+        raise(Exception('Quantity not supported: '+meas_quan))
 
     # Open the requested port
     meas_pro = measure['protocol']

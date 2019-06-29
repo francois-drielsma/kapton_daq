@@ -4,13 +4,14 @@
   "output_name":"kapton_daq",
   "measurements":{
     "virtual_voltage":{
+      "instrument":"virtual",
       "protocol":"virtual",
       "device":"virtual0",
-      "type":"virtual",
+      "quantity":"virtual",
       "scale":1,
       "name":"Voltage",
       "unit":"V",
-      "value":0.2
+      "value":0.0
     }
   }
 }

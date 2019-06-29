@@ -4,9 +4,10 @@
   "output_name":"kapton_daq",
   "measurements":{
     "voltage":{
+      "instrument":"dmm6500",
       "protocol":"usbtmc",
       "device":"/dev/usbtmc0",
-      "type":"voltage",
+      "quantity":"voltage",
       "scale":1,
       "name":"Voltage",
       "unit":"V"      

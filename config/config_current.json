@@ -4,9 +4,10 @@
   "output_name":"kapton_daq",
   "measurements":{
     "current":{
+      "instrument":"dmm6500",
       "protocol":"usbtmc",
       "device":"/dev/usbtmc0",
-      "type":"current",
+      "quantity":"current",
       "scale":1000000000,
       "name":"Current",
       "unit":"nA"      
