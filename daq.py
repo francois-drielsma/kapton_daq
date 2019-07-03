@@ -14,8 +14,8 @@ from utils.virtual_device import Virtual
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str,
                     help="Sets the config file")
-parser.add_argument('--name', type=str,
-                    help="Sets the output name")
+parser.add_argument('--outfile', type=str,
+                    help="Sets the output file name")
 parser.add_argument('--sampling', type=float,
                     help="Sets the amount of time the DAQ runs for")
 parser.add_argument('--refresh', type=float,
@@ -29,11 +29,12 @@ if args.config:
 
 cfg_file = open(cfg_name)
 cfg = json.load(cfg_file)
+print("[INFO] Running the DAQ with configuration "+cfg_name, flush=True)
 
 # Global parameters
 SAMPLING_TIME = cfg['sampling_time'] if not args.sampling else args.sampling
 REFRESH_RATE = cfg['refresh_rate'] if not args.refresh else args.refresh
-OUTPUT_NAME = cfg['output_name'] if not args.name else args.name
+OUTPUT_FILE = 'data/'+cfg['output_name']+'.csv' if not args.outfile else args.outfile
 
 # Add all the required measurements to the readout chain
 Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
@@ -87,9 +88,7 @@ for key in cfg['measurements'].keys():
                         unit = measure['unit']))
 
 # Initialize the output file
-output_file = "data/{}_{}.csv".format(\
-        time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime()), OUTPUT_NAME)
-output = CSVData(output_file)
+output = CSVData(OUTPUT_FILE)
 
 # Create dictionary keys
 keys = ['time']
@@ -114,5 +113,5 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
     # Wait for next measurement, if requested
     time.sleep(REFRESH_RATE)
 
-# Close the output file
+# Close the output file and the log file
 output.close()

@@ -27,6 +27,10 @@ keys.remove('time')
 config_dir = 'config'
 config_files = [join(config_dir, f) for f in listdir(config_dir)]
 
+# Store the position of log files
+log_dir = 'log'
+LOGFILE = ''
+
 # Set the device directory
 dev_dir = 'devices'
 
@@ -166,7 +170,6 @@ def div_daq_controls():
         html.Div([
             dcc.Input(
                 id='input-output-name',
-                placeholder='Enter an output file name...',
                 type='text',
                 value='',
                 disabled=False,
@@ -298,6 +301,49 @@ def div_virtual_controls():
         }
     )
 
+# Function that defines the HTML div that contains the DAQ output
+def div_daq_log():
+    """
+    Generates an html Div containing the DAQ controls
+    """
+    mead_div = html.Div(id='div-current-daq-value')
+    return html.Div([
+
+        # Title
+        html.H4('DAQ Log', style={"textAlign": "center"}),
+
+        # Start and stop button
+        html.Div([
+            # Box that display the config file
+            dcc.Textarea(
+                id="text-log",
+                placeholder=" ",
+                value="DAQ log will appear here when available...",
+                style={
+                    "width": "90%",
+                    "height": "300px",
+                    "marginLeft": "5%",
+                    "marginTop": "10px",
+                    "background-color":"black",
+                    "text-color":"white",
+                },
+                disabled=True
+            )
+        ])
+    ],
+        #className="six columns",
+        style={
+            "width": "49%",
+            "marginLeft": "50.7%",
+            "border-radius": "5px",
+            "border-width": "5px",
+            "border": "1px solid rgb(216, 216, 216)",
+            "position": "relative",
+            "height": "400px",
+            "marginTop": "10px"
+        }
+    )
+
 # Define the layout of the full HTML application
 app.layout = html.Div([
     # Banner display
@@ -336,7 +382,10 @@ app.layout = html.Div([
         div_daq_controls(),
         
         # The html div storing the virtual measurement control
-        div_virtual_controls()
+        div_virtual_controls(),
+
+        # The html div storing the DAQ output
+        div_daq_log()
     ],
         className="container"
     )
@@ -467,13 +516,18 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     # Count the amount of files currently in the data directory
     n_files = len(listdir(data_dir))
     
+    # Initialize a log file
+    date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+    log_file = "log/{}_{}.log".format(date_str, output_name)
+    global LOGFILE
+    LOGFILE = log_file
+
     # Set the arguments to be passed to the daq process
-    args = ['python3', 'daq.py', '--config', cfg_name]
-    if len(output_name):
-        args += ['--name', output_name]
+    output_file = "data/{}_{}.csv".format(date_str, output_name)
+    args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file]
     
     # Initialize the process, record the process ID
-    proc = subprocess.Popen(args, preexec_fn=setsid)
+    proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
     pid = proc.pid
     
     # Wait for the program to produce a new CSV file
@@ -557,6 +611,20 @@ def update_data_file(_, file_selection):
 
     return json
     
+# App callback that updates the log file displayed
+# when the page is refreshed
+@app.callback(Output('text-log', 'value'),
+              [Input('interval-log-update', 'n_intervals')])
+def update_log_file(_):
+    if LOGFILE:
+        try:
+            with open(LOGFILE, 'r') as log:
+                return '\n'.join(log.readlines())
+        except:
+            pass
+    else:
+        return 'DAQ log will appear here when available...'
+
 # App callback that updates the list of data keys
 # when the file changes, necessary as not all files
 # contain the same measurements
@@ -620,13 +688,13 @@ def update_div_current_daq_value(run_log_json):
         ]
 
 # App callback that displays the configuration 
-@app.callback(Output("text-config", "value"),
+@app.callback([Output("text-config", "value"),
+               Output("input-output-name", "value")],
               [Input('dropdown-config-selection', 'value')])
 def serial_monitor(cfg_name):
-
     with open(cfg_name, 'r') as cfg_file:
         cfg = json.load(cfg_file)
-        return json.dumps(cfg, indent=2)
+        return json.dumps(cfg, indent=2), cfg['output_name']
 
 # Running the server
 if __name__ == '__main__':
