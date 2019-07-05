@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
 import sys
 import time
+import datetime
 import json
 import argparse
 from collections import namedtuple
 import numpy as np
 import matplotlib.pyplot as plt
 import instruments as ik
-from utils.logger import CSVData
+from utils.logger import Logger, CSVData
 from utils.virtual_device import Virtual
 
 # Parse commande line arguments
@@ -29,12 +30,15 @@ if args.config:
 
 cfg_file = open(cfg_name)
 cfg = json.load(cfg_file)
-print("[INFO] Running the DAQ with configuration "+cfg_name, flush=True)
 
 # Global parameters
 SAMPLING_TIME = cfg['sampling_time'] if not args.sampling else args.sampling
 REFRESH_RATE = cfg['refresh_rate'] if not args.refresh else args.refresh
 OUTPUT_FILE = 'data/'+cfg['output_name']+'.csv' if not args.outfile else args.outfile
+
+# Initialize the logger
+logger = Logger()
+logger.log("Running DAQ with configuration "+cfg_name)
 
 # Add all the required measurements to the readout chain
 Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
@@ -44,6 +48,7 @@ for key in cfg['measurements'].keys():
     measure = cfg['measurements'][key]
     inst = None
     meas_inst = measure['instrument']
+    logger.log("Setting up instrument "+meas_inst)
     if meas_inst == 'dmm6500':
         inst = ik.generic_scpi.SCPIMultimeter
     elif meas_inst == 'fluke3000':
@@ -56,6 +61,7 @@ for key in cfg['measurements'].keys():
     # Determine the quantity requested
     meas = None
     meas_quan = measure['quantity']
+    logger.log("Setting up "+meas_quan+" measurement")
     if meas_quan == 'current':
         meas = inst.Mode.current_dc
     elif meas_quan == 'voltage':
@@ -70,6 +76,7 @@ for key in cfg['measurements'].keys():
     # Open the requested port
     meas_pro = measure['protocol']
     meas_dev = measure['device']
+    logger.log("Initializing device "+meas_dev+" with protocol "+meas_pro)
     if meas_pro == 'usbtmc':
         inst = inst.open_file(meas_dev)
     elif meas_pro == 'serial':
@@ -89,16 +96,23 @@ for key in cfg['measurements'].keys():
 
 # Initialize the output file
 output = CSVData(OUTPUT_FILE)
+logger.log("Creating DAQ output file "+OUTPUT_FILE)
 
 # Create dictionary keys
 keys = ['time']
 for m in measures:
     keys.append('{} [{}]'.format(m.name, m.unit))
+logger.log("DAQ recording keys: ["+",".join(keys)+"]")
 
 # Loop for the requested amount of time 
+logger.log("Starting DAQ...")
+logger.log("DAQ sampling time: "+(str(SAMPLING_TIME)+' s' if SAMPLING_TIME else 'Unconstrained'))
+logger.log("DAQ refresh rate: "+(str(REFRESH_RATE)+' s' if REFRESH_RATE else 'AFAP'))
 init_time = time.time()
+curr_time = init_time
 readings = np.empty(len(measures))
-while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
+ite_count, perc_count, min_count = 0, 0, 0
+while not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME:
     # Read
     for i, m in enumerate(measures):
         readings[i] = m.scale*m.inst.measure(m.meas)
@@ -113,5 +127,23 @@ while not SAMPLING_TIME or (time.time() - init_time) < SAMPLING_TIME:
     # Wait for next measurement, if requested
     time.sleep(REFRESH_RATE)
 
-# Close the output file and the log file
+    # Update, log the progress
+    curr_time = time.time()
+    delta_t = curr_time-init_time
+    ite_count += 1
+    if SAMPLING_TIME and int(10*delta_t/SAMPLING_TIME) > perc_count:
+        ratio = 100*delta_t/SAMPLING_TIME
+        perc_count = int(ratio/10)
+        elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
+        message = "DAQ running for {} ({:0.0f}%, {} measurements)".format(elapsed_time, min(ratio, 100), ite_count) 
+        logger.log(message)
+    elif not SAMPLING_TIME and int(delta_t/300) > min_count/5:
+        min_count = int(delta_t/60)
+        elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
+        message = "DAQ running for {} ({} measurements)".format(elapsed_time, ite_count) 
+        logger.log(message)
+
+# Close the output file
+logger.log("...DONE!")
+logger.log("Closing DAQ output file")
 output.close()

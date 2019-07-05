@@ -1,3 +1,30 @@
+import time
+import sys
+from enum import Enum
+
+class Logger:
+
+    class severity(Enum):
+        """
+        Enum with valid severity tags
+        """
+        debug = "DEBUG"
+        info = "INFO"
+        warning = "WARNING"
+        error = "ERROR"
+        fatal = "FATAL"
+
+    def __init__(self, output=''):
+        if output:
+            self.output = open(output, "a+")
+            sys.stdout = self.output
+            sys.stderr = sys.stdout
+
+    def log(self, message, severity=severity.info):
+        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+        message = '['+date_str+']['+severity.value+'] '+message
+        print(message, flush=True)
+
 class CSVData:
 
     def __init__(self, fout):
