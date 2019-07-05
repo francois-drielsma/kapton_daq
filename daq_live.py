@@ -8,7 +8,9 @@ import plotly.graph_objs as go
 import pandas as pd
 from os import listdir, killpg, setsid, remove
 from os.path import join
+import psutil
 import signal
+import sys
 import time
 import json
 import datetime
@@ -43,6 +45,14 @@ def data_keys(data_file):
     keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
     keys.remove('time')
     return keys
+
+# Function that checks if a process is live
+def process_is_live(pid):
+   proc = psutil.Process(pid)
+   if proc.status() == psutil.STATUS_ZOMBIE:
+       return False
+   else:
+       return True
 
 # Function that defines the HTML div that contains the DAQ graph
 def div_daq_graph():
@@ -524,7 +534,7 @@ def start_daq(nstart, nstop, cfg_name, output_name):
 
     # Set the arguments to be passed to the daq process
     output_file = "data/{}_{}.csv".format(date_str, output_name)
-    args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file]
+    args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file, '2>&1']
     
     # Initialize the process, record the process ID
     proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
@@ -534,6 +544,10 @@ def start_daq(nstart, nstop, cfg_name, output_name):
     time_out = 60
     init_time = time.time()
     while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
+        if not process_is_live(pid):
+            sys.stdout.flush()
+            sys.stderr.flush()
+            return '', False, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
         time.sleep(0.2)
         
     # Update the list of virtual devices
@@ -614,12 +628,13 @@ def update_data_file(_, file_selection):
 # App callback that updates the log file displayed
 # when the page is refreshed
 @app.callback(Output('text-log', 'value'),
-              [Input('interval-log-update', 'n_intervals')])
-def update_log_file(_):
+              [Input('interval-log-update', 'n_intervals'),
+               Input('interval-log-update', 'interval')])
+def update_log_file(_, __):
     if LOGFILE:
         try:
             with open(LOGFILE, 'r') as log:
-                return '\n'.join(log.readlines())
+                return ''.join(log.readlines())
         except:
             pass
     else:
