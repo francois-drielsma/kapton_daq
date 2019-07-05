@@ -504,6 +504,7 @@ def update_graph(run_log_json,
 # gets the file name from the input box.
 @app.callback([Output('daq-process-id', 'data'),
                Output('start-button', 'disabled'),
+               Output('stop-button', 'disabled'),
                Output('dropdown-file-selection', 'options'),
                Output('dropdown-file-selection', 'value'),
                Output('dropdown-config-selection', 'disabled'),
@@ -515,83 +516,73 @@ def update_graph(run_log_json,
                Output('interval-log-update', 'interval')],
               [Input('start-button', 'n_clicks'),
                Input('stop-button', 'n_clicks')],
-              [State('dropdown-config-selection', 'value'),
-               State('input-output-name', 'value')])
-def start_daq(nstart, nstop, cfg_name, output_name):
+              [State('daq-process-id', 'data'),
+               State('dropdown-config-selection', 'value'),
+               State('input-output-name', 'value'),])
+def daq(nstart, nstop, pid, cfg_name, output_name):
     # If first initialization or stop button pressed, enable the start button
     global data_files
-    if nstart is None or nstart == nstop:
-        return '', False, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
+    if nstart is None:
+        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
 
-    # Count the amount of files currently in the data directory
-    n_files = len(listdir(data_dir))
+    # If no DAQ process is running, start one
+    if not pid:
+        # Count the amount of files currently in the data directory
+        n_files = len(listdir(data_dir))
     
-    # Initialize a log file
-    date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-    log_file = "log/{}_{}.log".format(date_str, output_name)
-    global LOGFILE
-    LOGFILE = log_file
+        # Initialize a log file
+        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+        log_file = "log/{}_{}.log".format(date_str, output_name)
+        global LOGFILE
+        LOGFILE = log_file
 
-    # Set the arguments to be passed to the daq process
-    output_file = "data/{}_{}.csv".format(date_str, output_name)
-    args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file, '2>&1']
+        # Set the arguments to be passed to the daq process
+        output_file = "data/{}_{}.csv".format(date_str, output_name)
+        args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file, '2>&1']
     
-    # Initialize the process, record the process ID
-    proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
-    pid = proc.pid
+        # Initialize the process, record the process ID
+        proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
+        pid = proc.pid
     
-    # Wait for the program to produce a new CSV file
-    time_out = 60
-    init_time = time.time()
-    while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
-        if not process_is_live(pid):
-            sys.stdout.flush()
-            sys.stderr.flush()
-            return '', False, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
-        time.sleep(0.2)
+        # Wait for the program to produce a new CSV file
+        time_out = 60
+        init_time = time.time()
+        while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
+            if not process_is_live(pid):
+                sys.stdout.flush()
+                sys.stderr.flush()
+                return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
+            time.sleep(0.2)
         
-    # Update the list of virtual devices
-    dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
-    dev_options = [{'label':f, 'value':f} for f in dev_files]
+        # Update the list of virtual devices
+        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+        dev_options = [{'label':f, 'value':f} for f in dev_files]
     
-    # Update the list of data files, set the DAQ update as current
-    data_files = [join(data_dir, f) for f in listdir(data_dir)]
-    data_files.sort()
-    data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
+        # Update the list of data files, set the DAQ update as current
+        data_files = [join(data_dir, f) for f in listdir(data_dir)]
+        data_files.sort()
+        data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
     
-    # Disable the start button
-    return str(pid), True, data_options, data_files[-1], True, True, dev_options, False, False, False, 2000
-    
-# App callback that stops the DAQ when requested to do so,
-# disables the stop button and enables the start button
-@app.callback(Output('stop-button', 'disabled'),
-              [Input('start-button', 'n_clicks'),
-               Input('stop-button', 'n_clicks')],
-              [State('daq-process-id', 'data')])
-def stop_daq(nstart, nstop, pid):
-    # If the start button was pressed, enable the stop button
-    if nstart != nstop:
-        return False
+        # Disable the start button
+        return str(pid), True, False, data_options, data_files[-1], True, True, dev_options, False, False, False, 2000
+   
+    # If there is one running, kill it
+    else:
+        # Send a kill signal to the DAQ
+        try:
+            killpg(int(pid), signal.SIGTERM)
+        except:
+            print('The DAQ process has already been terminated')
+            pass
         
-    # If first initialization, disable the stop button
-    if nstop is None:
-        return True
+        # Delete the virtual devices
+        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+        for dev in dev_files:
+            remove(dev)
+    
+        # Disable the stop button
+        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
 
-    # Send a kill signal to the DAQ
-    try:
-        killpg(int(pid), signal.SIGTERM)
-    except:
-        print('The DAQ process has already been terminated')
-        pass
-        
-    # Delete the virtual devices
-    dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
-    for dev in dev_files:
-        remove(dev)
-    
-    # Disable the stop button
-    return True
-    
 # App callback that sets the value of the selected virtual device
 @app.callback(Output('button-virtual-set', 'label'),
               [Input('button-virtual-set', 'n_clicks')],
