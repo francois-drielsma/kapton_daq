@@ -507,23 +507,17 @@ def update_graph(run_log_json,
                Output('stop-button', 'disabled'),
                Output('dropdown-file-selection', 'options'),
                Output('dropdown-file-selection', 'value'),
-               Output('dropdown-config-selection', 'disabled'),
-               Output('input-output-name', 'disabled'),
-               Output('dropdown-virtual-selection', 'options'),
-               Output('dropdown-virtual-selection', 'disabled'),
-               Output('input-virtual-value', 'disabled'),
-               Output('button-virtual-set', 'disabled'),
                Output('interval-log-update', 'interval')],
               [Input('start-button', 'n_clicks'),
                Input('stop-button', 'n_clicks')],
               [State('daq-process-id', 'data'),
                State('dropdown-config-selection', 'value'),
-               State('input-output-name', 'value'),])
+               State('input-output-name', 'value')])
 def daq(nstart, nstop, pid, cfg_name, output_name):
     # If first initialization or stop button pressed, enable the start button
     global data_files
     if nstart is None:
-        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
+        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
 
     # If no DAQ process is running, start one
     if not pid:
@@ -551,20 +545,16 @@ def daq(nstart, nstop, pid, cfg_name, output_name):
             if not process_is_live(pid):
                 sys.stdout.flush()
                 sys.stderr.flush()
-                return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
+                return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
             time.sleep(0.2)
         
-        # Update the list of virtual devices
-        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
-        dev_options = [{'label':f, 'value':f} for f in dev_files]
-    
         # Update the list of data files, set the DAQ update as current
         data_files = [join(data_dir, f) for f in listdir(data_dir)]
         data_files.sort()
         data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
     
         # Disable the start button
-        return str(pid), True, False, data_options, data_files[-1], True, True, dev_options, False, False, False, 2000
+        return str(pid), True, False, data_options, data_files[-1], 2000
    
     # If there is one running, kill it
     else:
@@ -581,24 +571,58 @@ def daq(nstart, nstop, pid, cfg_name, output_name):
             remove(dev)
     
         # Disable the stop button
-        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, False, False, [], True, True, True, 24 * 60 * 60 * 1000
+        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
+
+# App callback that matches the states of the DAQ
+# controls to that of the DAQ start button
+@app.callback([Output('dropdown-config-selection', 'disabled'),
+               Output('input-output-name', 'disabled')],
+              [Input('start-button', 'disabled')])
+def enable_daq_controls(daq_disable):
+    # Match enable status of DAQ controls to start button
+    return daq_disable, daq_disable
+
+# App callback that matches the states of the virtual 
+# controls to that of the DAQ stop button
+@app.callback([Output('dropdown-virtual-selection', 'options'),
+               Output('dropdown-virtual-selection', 'disabled'),
+               Output('input-virtual-value', 'disabled'),
+               Output('button-virtual-set', 'disabled')],
+              [Input('stop-button', 'disabled')])
+def enable_virtual_controls(daq_disable):
+    # Update the list of virtual devices
+    dev_options = []
+    if not daq_disable:
+        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+        dev_options = [{'label':f, 'value':f} for f in dev_files]
+
+    # Set the virtual controls
+    return dev_options, daq_disable, daq_disable, daq_disable
 
 # App callback that sets the value of the selected virtual device
+# according to the value displayed in the input box
 @app.callback(Output('button-virtual-set', 'label'),
               [Input('button-virtual-set', 'n_clicks')],
               [State('dropdown-virtual-selection', 'value'),
                State('input-virtual-value', 'value')])
 def set_virtual(nclicks, virtual_name, virtual_value):
-    if nclicks is None:
+    # If the necessary arguments are not set, skip
+    if nclicks is None or not virtual_name:
         return ''
-        
-    with open(virtual_name, 'a+') as virtual_file:
-        virtual_file.write('\n'+virtual_value)
+
+    # Check that the value provided is a float, write to file
+    try:
+        float(virtual_value)
+        with open(virtual_name, 'a+') as virtual_file:
+            virtual_file.write('\n'+virtual_value)
+    except ValueError:
+        pass
+
     return ''
         
-# App callback that updates the data file to be read 
-# when the file selection dropdown is activatived.
-# The refresh rate is expressed in [ms]
+# App callback that reads the CSV data file
+# when the file selection dropdown is activatived
+# or the automatic reload is triggered
 @app.callback(Output('run-log-storage', 'children'),
               [Input('interval-log-update', 'n_intervals'),
                Input('dropdown-file-selection', 'value')])
