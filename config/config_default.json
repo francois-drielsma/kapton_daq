@@ -20,6 +20,15 @@
       "scale":1,
       "name":"Temperature",
       "unit":"C"
+    },
+    "voltage":{
+      "instrument":"fluke3000",
+      "protocol":"serial",
+      "device":"/dev/ttyUSB0",
+      "quantity":"voltage",
+      "scale":4000,
+      "name":"Voltage",
+      "unit":"V"
     }
   }
 }

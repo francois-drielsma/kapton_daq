@@ -40,12 +40,16 @@ OUTPUT_FILE = 'data/'+cfg['output_name']+'.csv' if not args.outfile else args.ou
 logger = Logger()
 logger.log("Running DAQ with configuration "+cfg_name)
 
+# Initialize the output file
+open(OUTPUT_FILE, 'w').close()
+output = CSVData(OUTPUT_FILE)
+logger.log("Created DAQ output file "+OUTPUT_FILE)
+
 # Add all the required measurements to the readout chain
 Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
 measures = []
-for key in cfg['measurements'].keys():
+for measure in cfg['measurements'].values():
     # Determine the instrument to use
-    measure = cfg['measurements'][key]
     inst = None
     meas_inst = measure['instrument']
     logger.log("Setting up instrument "+meas_inst)
@@ -85,7 +89,7 @@ for key in cfg['measurements'].keys():
         pass
     else:
         raise(Exception('Protocol not supported: '+meas_pro))
-        
+
     # Append a measurement object
     measures.append(Measurement(
                         inst = inst,
@@ -94,17 +98,13 @@ for key in cfg['measurements'].keys():
                         name = measure['name'],
                         unit = measure['unit']))
 
-# Initialize the output file
-output = CSVData(OUTPUT_FILE)
-logger.log("Creating DAQ output file "+OUTPUT_FILE)
-
 # Create dictionary keys
 keys = ['time']
 for m in measures:
     keys.append('{} [{}]'.format(m.name, m.unit))
 logger.log("DAQ recording keys: ["+",".join(keys)+"]")
 
-# Loop for the requested amount of time 
+# Loop for the requested amount of time
 logger.log("Starting DAQ...")
 logger.log("DAQ sampling time: "+(str(SAMPLING_TIME)+' s' if SAMPLING_TIME else 'Unconstrained'))
 logger.log("DAQ refresh rate: "+(str(REFRESH_RATE)+' s' if REFRESH_RATE else 'AFAP'))
@@ -116,7 +116,7 @@ while not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME:
     # Read
     for i, m in enumerate(measures):
         readings[i] = m.scale*m.inst.measure(m.meas)
-        
+
     # Append the output
     vals = [time.time()-init_time]
     vals.extend(readings)
@@ -135,12 +135,13 @@ while not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME:
         ratio = 100*delta_t/SAMPLING_TIME
         perc_count = int(ratio/10)
         elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
-        message = "DAQ running for {} ({:0.0f}%, {} measurements)".format(elapsed_time, min(ratio, 100), ite_count) 
+        message = "DAQ running for {} ({:0.0f}%, {} measurements)".\
+                format(elapsed_time, min(ratio, 100), ite_count)
         logger.log(message)
     elif not SAMPLING_TIME and int(delta_t/300) > min_count/5:
         min_count = int(delta_t/60)
         elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
-        message = "DAQ running for {} ({} measurements)".format(elapsed_time, ite_count) 
+        message = "DAQ running for {} ({} measurements)".format(elapsed_time, ite_count)
         logger.log(message)
 
 # Close the output file

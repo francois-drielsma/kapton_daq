@@ -1,48 +1,42 @@
 import dash
+import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-import dash_daq as daq
 from plotly import tools
 import plotly.graph_objs as go
 import pandas as pd
-from os import listdir, killpg, setsid, remove
+from os import listdir, killpg, setsid, remove, mkdir
 from os.path import join
+import errno
+import subprocess
 import psutil
 import signal
 import sys
 import time
-import json
 import datetime
-import subprocess
-
-# Take the last data file as an input for the visualizer
-data_dir = 'data'
-data_files = [join(data_dir, f) for f in listdir(data_dir)]
-data_files.sort()
-DATAFILE = data_files[-1]
-
-keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
-keys.remove('time')
-
-# Make a list of the available configurations
-config_dir = 'config'
-config_files = [join(config_dir, f) for f in listdir(config_dir)]
-
-# Store the position of log files
-log_dir = 'log'
-LOGFILE = ''
-
-# Set the device directory
-dev_dir = 'devices'
+import json
 
 # Initialize the app
 app = dash.Dash(__name__)
 server = app.server
 
+# Initialize the directories
+dirs = {'dat':'data',
+        'cfg':'config',
+        'log':'log',
+        'dev':'devices'}
+for d in dirs.values():
+    try:
+        mkdir(d)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        pass
+
 # Function that reads the data keys of a CSV file
-def data_keys(data_file):
-    keys = [key for key in list(pd.read_csv(DATAFILE).keys())]
+def data_keys(daq_data):
+    keys = pd.read_json(daq_data, orient='split').keys().tolist()
     keys.remove('time')
     return keys
 
@@ -55,44 +49,41 @@ def process_is_live(pid):
        return True
 
 # Function that defines the HTML div that contains the DAQ graph
-def div_daq_graph():
+def div_graph_daq():
     """
     Generates an html Div containing DAQ graph and
     the display options
     """
-    mead_div = html.Div(id='div-current-daq-value')
     return html.Div([
         # Graph division
         html.Div(
-            id='div-daq-graph',
+            id='div-graph-daq',
             className="nine columns"
         ),
-
         # List of options for the graph display
         html.Div([
             # Dropdown to choose the file from which to extract the data
             dcc.Dropdown(
                 id='dropdown-file-selection',
-                options=[{'label':f.split('/')[-1], 'value':f} for f in data_files],
-                value=DATAFILE,
+                options=[],
                 clearable=False,
                 searchable=False,
                 style={'margin-top': '10px'}
             ),
-            
+
             # Box that shows the elapsed time
             html.Div(
                 id="div-time-display"
             ),
-        
+
             # Checklist of the measurements to plot
             html.Div([
                 html.H6("Display selection", style={'font-weight': 'bold',
                                                     'marginBottom': '0px'}),
 
                 dcc.Checklist(
-                    options = [{'label': key, 'value': key} for key in keys],
-                    values=keys,
+                    options = [],
+                    values = [],
                     id='checklist-display-options-daq',
                     style={'marginLeft': '20px'}
                 )
@@ -118,7 +109,7 @@ def div_daq_graph():
                 ),
 
                 html.Div(id='div-current-daq-value')
-            ]),
+            ])
         ],
             className="three columns"
         ),
@@ -132,23 +123,24 @@ def div_daq_graph():
             "height": "460px"
         }
     )
-    
+
 # Function that defines the HTML div that contains the DAQ controls
 def div_daq_controls():
     """
     Generates an html Div containing the DAQ controls
     """
-    mead_div = html.Div(id='div-current-daq-value')
+    config_files = [join(dirs['cfg'], f) for f in listdir(dirs['cfg'])]
+    config_options = [{'label':f.split('/')[-1], 'value':f} for f in config_files]
     return html.Div([
 
         # Title
         html.H4('DAQ Controls', style={"textAlign": "center"}),
-        
+
         # Start and stop button
         html.Div([
-            # Buttons that start the DAQ 
+            # Buttons that start the DAQ
             daq.StopButton(
-                id='start-button',
+                id='button-start-daq',
                 children='Start',
                 className='one column',
                 disabled=False,
@@ -158,13 +150,10 @@ def div_daq_controls():
                     "width": "49%",
                 }
             ),
-            dcc.Store(
-                id='daq-process-id'
-            ),
-            
-            # Buttons that stop the DAQ 
+
+            # Buttons that stop the DAQ
             daq.StopButton(
-                id='stop-button',
+                id='button-stop-daq',
                 children='Stop',
                 className='one column',
                 disabled=True,
@@ -174,9 +163,8 @@ def div_daq_controls():
                     "width": "49%",
                 }
             ),
-        
-        
         ]),
+
         html.Div([
             dcc.Input(
                 id='input-output-name',
@@ -192,12 +180,12 @@ def div_daq_controls():
                     'marginLeft': "10%"
                 }
             ),
-            
+
             # DAQ config file input block
             dcc.Dropdown(
                 id='dropdown-config-selection',
-                options=[{'label':f.split('/')[-1], 'value':f} for f in config_files],
-                value='config/config_default.json',
+                options=config_options,
+                value=dirs['cfg']+'/config_default.json',
                 className='twelve columns',
                 clearable=False,
                 searchable=False,
@@ -210,7 +198,7 @@ def div_daq_controls():
                     'marginLeft': "5%"
                 }
             ),
-            
+
             # Box that display the config file
             dcc.Textarea(
                 id="text-config",
@@ -223,6 +211,12 @@ def div_daq_controls():
                     "marginTop": "10px",
                 },
                 disabled=True
+            ),
+
+            # Invisible div that stores the DAQ process ID
+            dcc.Store(
+                id='store-process-id',
+                data=''
             )
         ])
     ],
@@ -242,15 +236,14 @@ def div_virtual_controls():
     """
     Generates an html Div containing the DAQ controls
     """
-    mead_div = html.Div(id='div-current-daq-value')
     return html.Div([
 
         # Title
         html.H4('Virtual Controls', style={"textAlign": "center"}),
-        
+
         # Div with the file selection and refresh rate
         html.Div([
-            
+
             # DAQ virtual devices setter
             daq.StopButton(
                 id='button-virtual-set',
@@ -263,7 +256,7 @@ def div_virtual_controls():
                     "width": "100%",
                 }
             ),
-            
+
             dcc.Dropdown(
                 id='dropdown-virtual-selection',
                 options=[],
@@ -279,6 +272,7 @@ def div_virtual_controls():
                     'marginLeft': "5%"
                 }
             ),
+
             dcc.Input(
                 id='input-virtual-value',
                 placeholder='Enter a value...',
@@ -293,7 +287,7 @@ def div_virtual_controls():
                     'marginTop': '10px',
                     'marginLeft': "10%"
                 }
-            )    
+            )
         ],
             id='div-file-control-0',
             className='row',
@@ -316,7 +310,6 @@ def div_daq_log():
     """
     Generates an html Div containing the DAQ controls
     """
-    mead_div = html.Div(id='div-current-daq-value')
     return html.Div([
 
         # Title
@@ -339,7 +332,12 @@ def div_daq_log():
                 },
                 disabled=True
             )
-        ])
+        ]),
+
+        # Invisible div that stores the path to the file
+        dcc.Store(
+            id='store-log-path'
+        )
     ],
         #className="six columns",
         style={
@@ -382,15 +380,15 @@ app.layout = html.Div([
             n_intervals=0
         ),
 
-        # Hidden div that stores the JSON-serialized dataframe of run log
-        html.Div(id='run-log-storage', style={'display': 'none'}),
+        # Invisible div that stores the JSON-serialized dataframe of DAQ data
+        dcc.Store(id='store-daq-data'),
 
         # Html div that stores the DAQ graph and display parameters
-        div_daq_graph(),
-        
+        div_graph_daq(),
+
         # The html div storing the DAQ controls
         div_daq_controls(),
-        
+
         # The html div storing the virtual measurement control
         div_virtual_controls(),
 
@@ -402,160 +400,145 @@ app.layout = html.Div([
 ])
 
 # Function that defines the Dash graph object
-def update_graph(run_log_json,
+def update_graph(daq_data,
                  display_mode,
                  checklist_display_options):
     """
-    :param run_log_json: the json file containing the data
+    :param daq_data: the json file containing the data
     :param display_mode: 'separate' or 'overlap'
     :param checklist_display_options: list of keys to display
     :return: dcc Graph object containing the updated figures
     """
-    
-    # Import the data, initialize the graph
-    run_log_df = pd.read_json(run_log_json, orient='split')
+    # Check that there is data, return empty graph otherwise
+    if not daq_data:
+        return dcc.Graph(id='graph-daq')
+
+    # Import the data, get the keys, check that there is something to display
+    daq_df = pd.read_json(daq_data, orient='split')
     keys = []
-    for key in data_keys(DATAFILE):
+    for key in data_keys(daq_data):
         if key in checklist_display_options:
             keys.append(key)
     n_keys = len(keys)
-    if run_log_json and len(keys):
+    if not n_keys:
+        return dcc.Graph(id='graph-daq')
 
-        # Use time as the x axis
-        time = run_log_df['time']
+    # Use time as the x axis
+    time = daq_df['time']
 
-        # Initialize a trace for each quantity measured by the DAQ
-        traces = []
-        for key in keys:
-            values = run_log_df[key]
+    # Initialize a trace for each quantity measured by the DAQ
+    traces = []
+    for key in keys:
+        values = daq_df[key]
 
-            traces.append(go.Scatter(
-                x=time,
-                y=values,
-                mode='lines',
-                name=key
-            ))
-        
-        # Initialize the layout
-        plotly_layout = go.Layout()
+        traces.append(go.Scatter(
+            x=time,
+            y=values,
+            mode='lines',
+            name=key
+        ))
 
-        left_margin = (n_keys-1)*.05
-        layout_kwargs = {'title': 'DAQ monitor',
-                         'xaxis': {'title': "Time [s]", 'domain':[left_margin, 1]}}
+    # Initialize the layout
+    plotly_layout = go.Layout()
 
-        # Separate the measurements in several vertical graphs
-        if display_mode == 'separate_vertical':
-            figure = tools.make_subplots(rows=max(1, n_keys),
-                                         cols=1,
-                                         print_grid=False,
-                                         shared_yaxes=False)
+    left_margin = (n_keys-1)*.05
+    layout_kwargs = {'title': 'DAQ monitor',
+                     'xaxis': {'title': "Time [s]", 'domain':[left_margin, 1]}}
 
-            for i, trace in enumerate(traces):
-                figure.append_trace(trace, i+1, 1)
+    # Separate the measurements in several vertical graphs
+    if display_mode == 'separate_vertical':
+        figure = tools.make_subplots(rows=max(1, n_keys),
+                                     cols=1,
+                                     print_grid=False,
+                                     shared_yaxes=False)
 
-            figure['layout']['title'] = layout_kwargs['title']
-            for i, key in enumerate(keys):
-                figure['layout']['yaxis'+str(i+1)].update(title = key)
+        for i, trace in enumerate(traces):
+            figure.append_trace(trace, i+1, 1)
 
-        # Separate the measurements in several horizontal graphs
-        elif display_mode == 'separate_horizontal':
-            figure = tools.make_subplots(rows=1,
-                                         cols=max(1, n_keys),
-                                         shared_yaxes=False,
-                                         print_grid=False)
+        figure['layout']['title'] = layout_kwargs['title']
+        for i, key in enumerate(keys):
+            figure['layout']['yaxis'+str(i+1)].update(title = key)
 
-            for i, trace in enumerate(traces):
-                figure.append_trace(trace, 1, i+1)
+    # Separate the measurements in several horizontal graphs
+    elif display_mode == 'separate_horizontal':
+        figure = tools.make_subplots(rows=1,
+                                     cols=max(1, n_keys),
+                                     shared_yaxes=False,
+                                     print_grid=False)
 
-            figure['layout']['title'] = layout_kwargs['title']
-            for i, key in enumerate(keys):
-                figure['layout']['yaxis'+str(i+1)].update(title = key)
+        for i, trace in enumerate(traces):
+            figure.append_trace(trace, 1, i+1)
 
-        # Overlap the measurents on a single canvas
-        elif display_mode == 'overlap':
+        figure['layout']['title'] = layout_kwargs['title']
+        for i, key in enumerate(keys):
+            figure['layout']['yaxis'+str(i+1)].update(title = key)
 
-            for i, key in enumerate(keys):
-                axis_name = 'yaxis' + str(i + 1) * (i > 0)
-                yaxis = 'y' + str(i + 1) * (i > 0)
-                layout_kwargs[axis_name] = {'position': i * 0.05,
-                                            'title':key}
+    # Overlap the measurents on a single canvas
+    elif display_mode == 'overlap':
+        for i, key in enumerate(keys):
+            axis_name = 'yaxis' + str(i + 1) * (i > 0)
+            yaxis = 'y' + str(i + 1) * (i > 0)
+            layout_kwargs[axis_name] = {'position': i * 0.05,
+                                        'title':key}
 
-                traces[i]['yaxis'] = yaxis
-                if i > 0:
-                    layout_kwargs[axis_name]['overlaying'] = 'y'
-        
-            figure = go.Figure(
-                data=traces,
-                layout=go.Layout(layout_kwargs)
-            )
+            traces[i]['yaxis'] = yaxis
+            if i > 0:
+                layout_kwargs[axis_name]['overlaying'] = 'y'
 
-        else:
-            figure = None
+        figure = go.Figure(
+                    data=traces,
+                    layout=go.Layout(layout_kwargs)
+                 )
 
-        return dcc.Graph(figure=figure, id='graph')
-        
-    return dcc.Graph(id='graph')
-    
+    return dcc.Graph(figure=figure, id='graph-daq')
+
 # App callback that starts the DAQ when requested to do so,
-# records the process ID to know what to kill, 
+# records the DAQ process ID to know what to kill,
 # disables the start button and enables the stop button,
-# refreshes the list of files, set the file to last.
-# Gets the configuration from the drop down menu,
-# gets the file name from the input box.
-@app.callback([Output('daq-process-id', 'data'),
-               Output('start-button', 'disabled'),
-               Output('stop-button', 'disabled'),
-               Output('dropdown-file-selection', 'options'),
-               Output('dropdown-file-selection', 'value'),
-               Output('interval-log-update', 'interval')],
-              [Input('start-button', 'n_clicks'),
-               Input('stop-button', 'n_clicks')],
-              [State('daq-process-id', 'data'),
+# initializes the auto-refresh interval
+@app.callback([Output('store-process-id', 'data'),
+               Output('store-log-path', 'data'),
+               Output('button-start-daq', 'disabled'),
+               Output('button-stop-daq', 'disabled')],
+              [Input('button-start-daq', 'n_clicks'),
+               Input('button-stop-daq', 'n_clicks')],
+              [State('store-process-id', 'data'),
+               State('store-log-path', 'data'),
                State('dropdown-config-selection', 'value'),
                State('input-output-name', 'value')])
-def daq(nstart, nstop, pid, cfg_name, output_name):
+def daq_controller(nstart, nstop, pid, log_file, cfg_name, out_name):
     # If first initialization or stop button pressed, enable the start button
-    global data_files
     if nstart is None:
-        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
+        return '', log_file, False, True
 
     # If no DAQ process is running, start one
     if not pid:
         # Count the amount of files currently in the data directory
-        n_files = len(listdir(data_dir))
-    
+        n_files = len(listdir(dirs['dat']))
+
         # Initialize a log file
         date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-        log_file = "log/{}_{}.log".format(date_str, output_name)
-        global LOGFILE
-        LOGFILE = log_file
+        log_file = dirs['log']+"/{}_{}.log".format(date_str, out_name)
 
         # Set the arguments to be passed to the daq process
-        output_file = "data/{}_{}.csv".format(date_str, output_name)
-        args = ['python3', 'daq.py', '--config', cfg_name, '--outfile', output_file, '>', log_file, '2>&1']
-    
+        output_file = dirs['dat']+"/{}_{}.csv".format(date_str, out_name)
+        args = ['python3', 'daq.py', '--config', cfg_name,\
+                '--outfile', output_file, '>', log_file, '2>&1']
+
         # Initialize the process, record the process ID
         proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
         pid = proc.pid
-    
+
         # Wait for the program to produce a new CSV file
         time_out = 60
         init_time = time.time()
-        while len(listdir(data_dir)) == n_files and time.time()-init_time < time_out:
-            if not process_is_live(pid):
-                sys.stdout.flush()
-                sys.stderr.flush()
-                return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
-            time.sleep(0.2)
-        
-        # Update the list of data files, set the DAQ update as current
-        data_files = [join(data_dir, f) for f in listdir(data_dir)]
-        data_files.sort()
-        data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
-    
+        while (len(listdir(dirs['dat'])) == n_files and
+               time.time()-init_time < time_out):
+            time.sleep(0.1)
+
         # Disable the start button
-        return str(pid), True, False, data_options, data_files[-1], 2000
-   
+        return str(pid), log_file, True, False
+
     # If there is one running, kill it
     else:
         # Send a kill signal to the DAQ
@@ -564,36 +547,58 @@ def daq(nstart, nstop, pid, cfg_name, output_name):
         except:
             print('The DAQ process has already been terminated')
             pass
-        
+
         # Delete the virtual devices
-        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+        dev_files = [join(dirs['dev'], f) for f in listdir(dirs['dev'])]
         for dev in dev_files:
             remove(dev)
-    
-        # Disable the stop button
-        return '', False, True, [{'label':f.split('/')[-1], 'value':f} for f in data_files], DATAFILE, 24 * 60 * 60 * 1000
+
+        # Disable the stop button, disable autorefresh
+        return '', log_file, False, True
+
+# App callback that initializes the auto-refresh interval
+# when the DAQ is started or stopped (matched to DAQ status)
+@app.callback(Output('interval-log-update', 'interval'),
+              [Input('store-process-id', 'data')])
+def daq_controller(pid):
+    if pid:
+        return 2000             # ms, two seconds
+    else:
+        return 24*60*60*1000    # ms, one day
 
 # App callback that matches the states of the DAQ
 # controls to that of the DAQ start button
 @app.callback([Output('dropdown-config-selection', 'disabled'),
                Output('input-output-name', 'disabled')],
-              [Input('start-button', 'disabled')])
+              [Input('button-start-daq', 'disabled')])
 def enable_daq_controls(daq_disable):
     # Match enable status of DAQ controls to start button
     return daq_disable, daq_disable
 
-# App callback that matches the states of the virtual 
+# App callback that displays the configuration
+@app.callback([Output("text-config", "value"),
+               Output("input-output-name", "value")],
+              [Input('dropdown-config-selection', 'value')])
+def update_config_file(cfg_name):
+    if cfg_name:
+        with open(cfg_name, 'r') as cfg_file:
+            cfg = json.load(cfg_file)
+            return json.dumps(cfg, indent=2), cfg['output_name']
+
+    return '', ''
+
+# App callback that matches the states of the virtual
 # controls to that of the DAQ stop button
 @app.callback([Output('dropdown-virtual-selection', 'options'),
                Output('dropdown-virtual-selection', 'disabled'),
                Output('input-virtual-value', 'disabled'),
                Output('button-virtual-set', 'disabled')],
-              [Input('stop-button', 'disabled')])
+              [Input('button-stop-daq', 'disabled')])
 def enable_virtual_controls(daq_disable):
     # Update the list of virtual devices
     dev_options = []
     if not daq_disable:
-        dev_files = [join(dev_dir, f) for f in listdir(dev_dir)]
+        dev_files = [join(dirs['dev'], f) for f in listdir(dirs['dev'])]
         dev_options = [{'label':f, 'value':f} for f in dev_files]
 
     # Set the virtual controls
@@ -619,112 +624,120 @@ def set_virtual(nclicks, virtual_name, virtual_value):
         pass
 
     return ''
-        
+
+# App callback that updates the list of available
+# data files when the DAQ has created a log file
+@app.callback([Output('dropdown-file-selection', 'options'),
+               Output('dropdown-file-selection', 'value')],
+              [Input('store-log-path', 'data')])
+def update_data_list(daq_disable):
+    # Update the list of data files, set the last DAQ output as current
+    data_files = [join(dirs['dat'], f) for f in listdir(dirs['dat'])]
+    data_files.sort()
+    data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
+    return data_options, data_files[-1]
+
 # App callback that reads the CSV data file
 # when the file selection dropdown is activatived
 # or the automatic reload is triggered
-@app.callback(Output('run-log-storage', 'children'),
+@app.callback(Output('store-daq-data', 'data'),
               [Input('interval-log-update', 'n_intervals'),
                Input('dropdown-file-selection', 'value')])
-def update_data_file(_, file_selection):
-
-    try:
-        global DATAFILE
-        DATAFILE = file_selection
-        run_log_df = pd.read_csv(file_selection)
-        json = run_log_df.to_json(orient='split')
-    except FileNotFoundError as error:
-        print(error)
-        print("Please verify if the csv file exists in the data folder.")
-        return None
-
-    return json
-    
-# App callback that updates the log file displayed
-# when the page is refreshed
-@app.callback(Output('text-log', 'value'),
-              [Input('interval-log-update', 'n_intervals'),
-               Input('interval-log-update', 'interval')])
-def update_log_file(_, __):
-    if LOGFILE:
+def update_data_file(_, daq_file):
+    if daq_file:
         try:
-            with open(LOGFILE, 'r') as log:
-                return ''.join(log.readlines())
-        except:
-            pass
-    else:
-        return 'DAQ log will appear here when available...'
+            daq_df = pd.read_csv(daq_file)
+            daq_data = daq_df.to_json(orient='split')
+            return daq_data
+        except FileNotFoundError:
+            print('File not found: {}'.format(daq_file))
+        except pd.errors.EmptyDataError as error:
+            print('Could not read data from the CSV file: {}'.format(daq_file))
+
+    return None
 
 # App callback that updates the list of data keys
 # when the file changes, necessary as not all files
 # contain the same measurements
 @app.callback([Output('checklist-display-options-daq', 'options'),
                Output('checklist-display-options-daq', 'values')],
-              [Input('run-log-storage', 'children')])
-def update_options(file_selection):
-    DATAFILE = file_selection
-    keys = data_keys(DATAFILE)
-    options = [{'label': key, 'value': key} for key in keys]    
-    return options, keys
+              [Input('store-daq-data', 'data')])
+def update_display_options(daq_data):
+    if daq_data:
+        keys = data_keys(daq_data)
+        options = [{'label': key, 'value': key} for key in keys]
+        return options, keys
 
-# App callback that prints the elapsed time
-# whenever the page is refreshed (inherits from run-log-storage)
-@app.callback(Output('div-time-display', 'children'),
-              [Input('run-log-storage', 'children')])
-def update_div_time_display(run_log_json):
-    if run_log_json:
-        run_log_df = pd.read_json(run_log_json, orient='split')
-        time = int(run_log_df['time'].iloc[-1]-run_log_df['time'].iloc[0])
-        time_delta = str(datetime.timedelta(seconds=time))
-        return html.H6(f"Time elapsed: {time_delta}", style={'font-weight': 'bold',
-                                                             'margin-top': '3px'})
+    return [], []
 
-# App callback that updates the graph 
-# whenever the page is refreshed (inherits from run-log-storage)
-@app.callback(Output('div-daq-graph', 'children'),
-              [Input('run-log-storage', 'children'),
+# App callback that updates the log file displayed
+# when the page is refreshed
+@app.callback(Output('text-log', 'value'),
+              [Input('interval-log-update', 'n_intervals'),
+               Input('store-log-path', 'data')])
+def update_log_file(_, log_file):
+    if log_file:
+        try:
+            with open(log_file, 'r') as log:
+                return ''.join(log.readlines())
+        except:
+            pass
+    else:
+        return 'DAQ log will appear here when available...'
+
+# App callback that updates the graph
+# whenever the page is refreshed (inherits from store-daq-data)
+@app.callback(Output('div-graph-daq', 'children'),
+              [Input('store-daq-data', 'data'),
                Input('radio-display-mode-daq', 'value'),
                Input('checklist-display-options-daq', 'values')])
-def update(run_log_json,
-           display_mode,
-           checklist_display_options):
+def update_div_graph(daq_data,
+                     display_mode,
+                     checklist_display_options):
 
-    graph = update_graph(run_log_json,                         
+    # Update the graph div
+    graph = update_graph(daq_data,
                          display_mode,
                          checklist_display_options)
 
     return [graph]
 
+# App callback that prints the elapsed time
+# whenever the page is refreshed (inherits from store-daq-data)
+@app.callback(Output('div-time-display', 'children'),
+              [Input('store-daq-data', 'data')])
+def update_div_time_display(daq_data):
+    # If the DAQ is running, get the elapsed time
+    time = 0
+    if daq_data:
+        daq_df = pd.read_json(daq_data, orient='split')
+        time = int(daq_df['time'].iloc[-1]-daq_df['time'].iloc[0])
+
+    time_delta = str(datetime.timedelta(seconds=time))
+    return html.H6(f"Time elapsed: {time_delta}",
+                   style={'font-weight': 'bold',
+                          'margin-top': '3px'})
+
 # App callback that prints the current values of the measurements
-# whenever the page is refreshed (inherits from run-log-storage)
+# whenever the page is refreshed (inherits from store-daq-data)
 @app.callback(Output('div-current-daq-value', 'children'),
-              [Input('run-log-storage', 'children')])
-def update_div_current_daq_value(run_log_json):
-    if run_log_json:
-        run_log_df = pd.read_json(run_log_json, orient='split')
+              [Input('store-daq-data', 'data')])
+def update_div_current_daq_value(daq_data):
+    div = [html.H6("Current values",
+                     style={'font-weight': 'bold',
+                            'marginBottom': '0px',
+                            'marginTop': '10px'}
+                    )]
+    if daq_data:
+        daq_df = pd.read_json(daq_data, orient='split')
         values = []
-        for key in data_keys(DATAFILE):
-            val = run_log_df[key].iloc[-1]
+        for key in data_keys(daq_data):
+            val = daq_df[key].iloc[-1]
             values.append(html.Div(f"> {key}: {val:.4f}",
                                    style={'marginLeft': '20px'}))
-        return [
-            html.H6(
-                "Current values",
-                style={'font-weight': 'bold',
-                       'marginBottom': '0px',
-                       'marginTop': '10px'}
-            ),
-            *values
-        ]
+        div += values
 
-# App callback that displays the configuration 
-@app.callback([Output("text-config", "value"),
-               Output("input-output-name", "value")],
-              [Input('dropdown-config-selection', 'value')])
-def serial_monitor(cfg_name):
-    with open(cfg_name, 'r') as cfg_file:
-        cfg = json.load(cfg_file)
-        return json.dumps(cfg, indent=2), cfg['output_name']
+    return div
 
 # Running the server
 if __name__ == '__main__':
