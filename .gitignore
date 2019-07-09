@@ -27,4 +27,5 @@ instance/
 .webassets-cache
 
 # Jupyter Notebook
+*.ipynb
 .ipynb_checkpoints
