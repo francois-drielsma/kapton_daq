@@ -84,7 +84,7 @@ for measure in cfg['measurements'].values():
     if meas_pro == 'usbtmc':
         inst = inst.open_file(meas_dev)
     elif meas_pro == 'serial':
-        inst = inst.open_serial(meas_dev, 115200)
+        inst = inst.open_serial(meas_dev, measure['baud'])
     elif meas_pro == 'virtual':
         pass
     else:

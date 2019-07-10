@@ -6,6 +6,7 @@
     "temperature":{
       "instrument":"fluke3000",
       "protocol":"serial",
+      "baud":115200,
       "device":"/dev/ttyUSB0",
       "quantity":"temperature",
       "scale":1,
