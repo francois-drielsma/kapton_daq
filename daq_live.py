@@ -332,7 +332,7 @@ def div_daq_log():
                     "marginLeft": "5%",
                     "marginTop": "10px",
                     "background-color":"black",
-                    "text-color":"white",
+                    "color":"white"
                 },
                 disabled=True
             )
