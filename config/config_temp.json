@@ -1,7 +1,7 @@
 {
   "sampling_time":0.0,
   "refresh_rate":0.0,
-  "output_name":"kapton_daq",
+  "output_name":"temp_daq",
   "measurements":{
     "temperature":{
       "instrument":"fluke3000",
