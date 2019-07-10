@@ -3,6 +3,7 @@ import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 from plotly import tools
 import plotly.graph_objs as go
 import pandas as pd
@@ -42,11 +43,14 @@ def data_keys(daq_data):
 
 # Function that checks if a process is live
 def process_is_live(pid):
-   proc = psutil.Process(pid)
-   if proc.status() == psutil.STATUS_ZOMBIE:
-       return False
-   else:
-       return True
+    try:
+       proc = psutil.Process(int(pid))
+       if proc.status() == psutil.STATUS_ZOMBIE:
+           return False
+       else:
+           return True
+    except psutil.NoSuchProcess:
+        return False
 
 # Function that defines the HTML div that contains the DAQ graph
 def div_graph_daq():
@@ -566,6 +570,20 @@ def daq_controller(pid):
     else:
         return 24*60*60*1000    # ms, one day
 
+# App callback that automatically presses the stop
+# button if the DAQ process has died
+@app.callback(Output('button-stop-daq', 'n_clicks'),
+              [Input('interval-log-update', 'n_intervals')],
+              [State('store-process-id', 'data'),
+               State('button-stop-daq', 'n_clicks')])
+def check_daq_process(_, pid, nstop):
+    if pid and not process_is_live(pid):
+        sys.stdout.flush()
+        sys.stderr.flush()
+        return nstop + 1 if nstop else 1
+    else:
+        raise PreventUpdate
+
 # App callback that matches the states of the DAQ
 # controls to that of the DAQ start button
 @app.callback([Output('dropdown-config-selection', 'disabled'),
@@ -652,7 +670,7 @@ def update_data_file(_, daq_file):
         except FileNotFoundError:
             print('File not found: {}'.format(daq_file))
         except pd.errors.EmptyDataError as error:
-            print('Could not read data from the CSV file: {}'.format(daq_file))
+            pass
 
     return None
 
