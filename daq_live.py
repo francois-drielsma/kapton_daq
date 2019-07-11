@@ -41,6 +41,12 @@ def data_keys(daq_data):
     keys.remove('time')
     return keys
 
+# Function that gets the name and unit from the CSV key
+def key_elements(key):
+    name, unit = key.split(" ")
+    unit = unit.strip("[").strip("]")
+    return name, unit
+
 # Function that checks if a process is live
 def process_is_live(pid):
     try:
@@ -434,12 +440,13 @@ def update_graph(daq_data,
     traces = []
     for key in keys:
         values = daq_df[key]
+        name, unit = key_elements(key)
 
         traces.append(go.Scatter(
             x=time,
             y=values,
             mode='lines',
-            name=key
+            name=name
         ))
 
     # Initialize the layout
@@ -683,7 +690,7 @@ def update_data_file(_, daq_file):
 def update_display_options(daq_data):
     if daq_data:
         keys = data_keys(daq_data)
-        options = [{'label': key, 'value': key} for key in keys]
+        options = [{'label': key_elements(key)[0], 'value': key} for key in keys]
         return options, keys
 
     return [], []
@@ -750,8 +757,9 @@ def update_div_current_daq_value(daq_data):
         daq_df = pd.read_json(daq_data, orient='split')
         values = []
         for key in data_keys(daq_data):
+            name, unit = key_elements(key)
             val = daq_df[key].iloc[-1]
-            values.append(html.Div(f"> {key}: {val:.4f}",
+            values.append(html.Div(f"> {name}: {val:.4f} {unit}",
                                    style={'marginLeft': '20px'}))
         div += values
 
