@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import sys
 import time
+import signal
 import datetime
 import json
 import argparse
@@ -10,6 +11,16 @@ import matplotlib.pyplot as plt
 import instruments as ik
 from utils.logger import Logger, CSVData
 from utils.virtual_device import Virtual
+
+# Class that handles SIGINT and SIGTERM gracefully
+class Killer:
+  kill_now = False
+  def __init__(self):
+    signal.signal(signal.SIGINT, self.exit)
+    signal.signal(signal.SIGTERM, self.exit)
+
+  def exit(self, signum, frame):
+    self.kill_now = True
 
 # Parse commande line arguments
 parser = argparse.ArgumentParser()
@@ -112,7 +123,8 @@ init_time = time.time()
 curr_time = init_time
 readings = np.empty(len(measures))
 ite_count, perc_count, min_count = 0, 0, 0
-while not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME:
+killer = Killer()
+while (not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME) and not killer.kill_now:
     # Read
     for i, m in enumerate(measures):
         readings[i] = m.scale*m.inst.measure(m.meas)
