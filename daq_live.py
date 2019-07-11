@@ -461,13 +461,17 @@ def update_graph(daq_data,
         figure = tools.make_subplots(rows=max(1, n_keys),
                                      cols=1,
                                      print_grid=False,
-                                     shared_yaxes=False)
+                                     shared_xaxes=True,
+                                     shared_yaxes=False,
+                                     vertical_spacing=0.001)
 
         for i, trace in enumerate(traces):
             figure.append_trace(trace, i+1, 1)
 
         figure['layout']['title'] = layout_kwargs['title']
+        figure['layout']['showlegend'] = False
         for i, key in enumerate(keys):
+            figure['layout']['xaxis'].update(title = 'Time [s]')
             figure['layout']['yaxis'+str(i+1)].update(title = key)
 
     # Separate the measurements in several horizontal graphs
@@ -481,7 +485,9 @@ def update_graph(daq_data,
             figure.append_trace(trace, 1, i+1)
 
         figure['layout']['title'] = layout_kwargs['title']
+        figure['layout']['showlegend'] = False
         for i, key in enumerate(keys):
+            figure['layout']['xaxis'+str(i+1)].update(title = 'Time [s]')
             figure['layout']['yaxis'+str(i+1)].update(title = key)
 
     # Overlap the measurents on a single canvas
