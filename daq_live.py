@@ -664,9 +664,12 @@ def set_virtual(nclicks, virtual_name, virtual_value):
 def update_data_list(daq_disable):
     # Update the list of data files, set the last DAQ output as current
     data_files = [join(dirs['dat'], f) for f in listdir(dirs['dat'])]
-    data_files.sort()
+    data_file = None
+    if len(data_files):
+        data_files.sort()
+        data_file = data_files[-1]
     data_options = [{'label':f.split('/')[-1], 'value':f} for f in data_files]
-    return data_options, data_files[-1]
+    return data_options, data_file
 
 # App callback that reads the CSV data file
 # when the file selection dropdown is activatived
