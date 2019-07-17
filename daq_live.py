@@ -93,7 +93,7 @@ def div_graph_daq():
 
                 dcc.Checklist(
                     options = [],
-                    values = [],
+                    value = [],
                     id='checklist-display-options-daq',
                     style={'marginLeft': '20px'}
                 )
@@ -694,7 +694,7 @@ def update_data_file(_, daq_file):
 # when the file changes, necessary as not all files
 # contain the same measurements
 @app.callback([Output('checklist-display-options-daq', 'options'),
-               Output('checklist-display-options-daq', 'values')],
+               Output('checklist-display-options-daq', 'value')],
               [Input('store-daq-data', 'data')])
 def update_display_options(daq_data):
     if daq_data:
@@ -724,7 +724,7 @@ def update_log_file(_, log_file):
 @app.callback(Output('div-graph-daq', 'children'),
               [Input('store-daq-data', 'data'),
                Input('radio-display-mode-daq', 'value'),
-               Input('checklist-display-options-daq', 'values')])
+               Input('checklist-display-options-daq', 'value')])
 def update_div_graph(daq_data,
                      display_mode,
                      checklist_display_options):
