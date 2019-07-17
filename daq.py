@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-import sys
 import time
 import signal
 import datetime
@@ -7,7 +6,6 @@ import json
 import argparse
 from collections import namedtuple
 import numpy as np
-import matplotlib.pyplot as plt
 import instruments as ik
 from utils.logger import Logger, CSVData
 from utils.virtual_device import Virtual
