@@ -11,7 +11,7 @@ This package is written in Python 3.
 The following packages must be installed:
 
 ```bash
-pip3 install plotly dash dash_daq pandas numpy
+pip3 install plotly dash dash_daq psutil pandas numpy matplotlib 
 ```
 
 ## Install the InstrumentKit repository
@@ -19,7 +19,7 @@ pip3 install plotly dash dash_daq pandas numpy
 The InstrumentKit package supports communications through
 a variety of protocols (GPIB, RS232, USBTMC, etc.). Only
 the branch of `francois-drielsma` supports the Fluke 3000 FC
-devices, so pull that one specifically.
+and Keithley 485 devices, so pull that one specifically.
 
 1. Pull the repository
 
@@ -31,7 +31,7 @@ git clone https://github.com/francois-drielsma/InstrumentKit
 
 ```bash
 cd InstrumentKit/
-python3 setup.py install
+sudo python3 setup.py install
 ```
 
 ### Enable serial connections
@@ -41,7 +41,7 @@ python3 setup.py install
 ```bash
 sudo adduser user tty
 sudo adduser user dialout
-``` 
+```
 
 2. Reboot the computer
 
@@ -51,7 +51,7 @@ sudo adduser user dialout
 
 ```bash
 lsusb
-Bus 001 Device 016: ID 05e6:6500 Keithley Instruments 
+Bus 001 Device 016: ID 05e6:6500 Keithley Instruments
 ```
 
 2. Add udev rules to handle the device
