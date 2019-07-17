@@ -66,6 +66,8 @@ for measure in cfg['measurements'].values():
     logger.log("Setting up instrument "+meas_inst)
     if meas_inst == 'dmm6500':
         inst = ik.generic_scpi.SCPIMultimeter
+    elif meas_inst == 'keithley485':
+        inst = ik.keithley.Keithley485
     elif meas_inst == 'fluke3000':
         inst = ik.fluke.Fluke3000
     elif meas_inst == 'virtual':
@@ -96,6 +98,8 @@ for measure in cfg['measurements'].values():
         inst = inst.open_file(meas_dev)
     elif meas_pro == 'serial':
         inst = inst.open_serial(meas_dev, measure['baud'])
+    elif meas_pro == 'gpib':
+        inst = inst.open_gpibusb(meas_dev, measure['port'], prologix=True)
     elif meas_pro == 'virtual':
         pass
     else:
