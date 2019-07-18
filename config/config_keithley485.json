@@ -8,6 +8,7 @@
       "protocol":"gpib",
       "device":"/dev/ttyUSB0",
       "port":22,
+      "model":"pl",
       "quantity":"current",
       "scale":1000000000,
       "name":"Current",
