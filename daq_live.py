@@ -4,7 +4,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from plotly import tools
+from plotly import subplots
 import plotly.graph_objs as go
 import pandas as pd
 from os import listdir, killpg, setsid, remove, mkdir
@@ -458,7 +458,7 @@ def update_graph(daq_data,
 
     # Separate the measurements in several vertical graphs
     if display_mode == 'separate_vertical':
-        figure = tools.make_subplots(rows=max(1, n_keys),
+        figure = subplots.make_subplots(rows=max(1, n_keys),
                                      cols=1,
                                      print_grid=False,
                                      shared_xaxes=True,
@@ -476,7 +476,7 @@ def update_graph(daq_data,
 
     # Separate the measurements in several horizontal graphs
     elif display_mode == 'separate_horizontal':
-        figure = tools.make_subplots(rows=1,
+        figure = subplots.make_subplots(rows=1,
                                      cols=max(1, n_keys),
                                      shared_yaxes=False,
                                      print_grid=False)
