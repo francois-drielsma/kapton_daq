@@ -470,8 +470,8 @@ def update_graph(daq_data,
 
         figure['layout']['title'] = layout_kwargs['title']
         figure['layout']['showlegend'] = False
+        figure['layout']['xaxis{}'.format(len(keys))].update(title = 'Time [s]')
         for i, key in enumerate(keys):
-            figure['layout']['xaxis'].update(title = 'Time [s]')
             figure['layout']['yaxis'+str(i+1)].update(title = key)
 
     # Separate the measurements in several horizontal graphs
