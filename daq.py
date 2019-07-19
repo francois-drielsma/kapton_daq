@@ -97,7 +97,7 @@ for measure in cfg['measurements'].values():
     elif meas_pro == 'serial':
         inst = inst.open_serial(meas_dev, measure['baud'])
     elif meas_pro == 'gpib':
-        inst = inst.open_gpibusb(meas_dev, measure['port'], measure['model'])
+        inst = inst.open_gpibusb(meas_dev, measure['port'], model=measure['model'])
     elif meas_pro == 'virtual':
         pass
     else:
