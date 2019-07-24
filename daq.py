@@ -129,7 +129,11 @@ killer = Killer()
 while (not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME) and not killer.kill_now:
     # Read
     for i, m in enumerate(measures):
-        readings[i] = m.scale*m.inst.measure(m.meas)
+        try:
+            readings[i] = m.scale*m.inst.measure(m.meas)
+        except ValueError:
+            print("Failed to read, continuing")
+            continue
 
     # Append the output
     vals = [time.time()-init_time]
