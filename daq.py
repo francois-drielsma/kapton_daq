@@ -11,20 +11,19 @@ from utils.virtual_device import Virtual
 
 # Class that handles SIGINT and SIGTERM gracefully
 class Killer:
-  kill_now = False
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.exit)
-    signal.signal(signal.SIGTERM, self.exit)
+    kill_now = False
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit)
+        signal.signal(signal.SIGTERM, self.exit)
 
-  def exit(self, signum, frame):
-    self.kill_now = True
+        def exit(self, signum, frame):
+            self.kill_now = True
 
 # Function that acquires the requested measurements
 def acquire(measures):
     readings = []
     max_fails = 5
     for i, m in enumerate(measures):
-
         # Try to get the measurement, allow for a few consecutive failures
         fail_count = 0
         while fail_count < max_fails:
