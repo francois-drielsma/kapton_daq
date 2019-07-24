@@ -16,8 +16,8 @@ class Killer:
         signal.signal(signal.SIGINT, self.exit)
         signal.signal(signal.SIGTERM, self.exit)
 
-        def exit(self, signum, frame):
-            self.kill_now = True
+    def exit(self, signum, frame):
+        self.kill_now = True
 
 # Function that acquires the requested measurements
 def acquire(measures):
@@ -30,7 +30,8 @@ def acquire(measures):
             try:
                 readings.append(m.scale*m.inst.measure(m.meas))
                 break
-            except:
+            except Exception as e:
+                logger.log(str(e), logger.severity.error)
                 logger.log("Failed to read {}, retrying...".format(m.name), logger.severity.error)
                 fail_count += 1
                 if fail_count >= max_fails:
