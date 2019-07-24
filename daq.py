@@ -4,9 +4,8 @@ import signal
 import datetime
 import json
 import argparse
-from collections import namedtuple
-import numpy as np
 import instruments as ik
+from collections import namedtuple
 from utils.logger import Logger, CSVData
 from utils.virtual_device import Virtual
 
@@ -19,6 +18,27 @@ class Killer:
 
   def exit(self, signum, frame):
     self.kill_now = True
+
+# Function that acquires the requested measurements
+def acquire(measures):
+    readings = []
+    max_fails = 5
+    for i, m in enumerate(measures):
+
+        # Try to get the measurement, allow for a few consecutive failures
+        fail_count = 0
+        while fail_count < max_fails:
+            try:
+                readings.append(m.scale*m.inst.measure(m.meas))
+                break
+            except:
+                logger.log("Failed to read {}, retrying...".format(m.name), logger.severity.error)
+                fail_count += 1
+                if fail_count >= max_fails:
+                    logger.log("Too many consecutive fails, killing DAQ", logger.severity.fatal)
+                    return None
+
+    return readings
 
 # Parse commande line arguments
 parser = argparse.ArgumentParser()
@@ -123,17 +143,13 @@ logger.log("DAQ sampling time: "+(str(SAMPLING_TIME)+' s' if SAMPLING_TIME else 
 logger.log("DAQ refresh rate: "+(str(REFRESH_RATE)+' s' if REFRESH_RATE else 'AFAP'))
 init_time = time.time()
 curr_time = init_time
-readings = np.empty(len(measures))
 ite_count, perc_count, min_count = 0, 0, 0
 killer = Killer()
 while (not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME) and not killer.kill_now:
-    # Read
-    for i, m in enumerate(measures):
-        try:
-            readings[i] = m.scale*m.inst.measure(m.meas)
-        except ValueError:
-            print("Failed to read, continuing")
-            continue
+    # Acquire measurements
+    readings = acquire(measures)
+    if not readings:
+        break
 
     # Append the output
     vals = [time.time()-init_time]
