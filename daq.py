@@ -114,6 +114,7 @@ for k, i in cfg['instruments'].items():
                 inst = inst.channel[m['channel']]
             meas = inst.__class__.__dict__[m['quantity']]
             if 'value' in m:
+                logger.log("Setting {} to {} {}".format(m['name'], m['value'], m['unit']))
                 meas.fset(inst, m['value'])
                 time.sleep(0.1)
             probe = lambda inst, meas: meas.fget(inst)

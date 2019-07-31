@@ -43,7 +43,8 @@ def data_keys(daq_data):
 
 # Function that gets the name and unit from the CSV key
 def key_elements(key):
-    name, unit = key.split(" ")
+    elmts = key.split(" ")
+    name, unit = " ".join(elmts[:-1]), elmts[-1]
     unit = unit.strip("[").strip("]")
     return name, unit
 
