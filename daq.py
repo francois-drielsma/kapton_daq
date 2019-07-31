@@ -7,7 +7,7 @@ import argparse
 import instruments as ik
 from collections import namedtuple
 from utils.logger import Logger, CSVData
-from utils.virtual_device import Virtual
+from utils.virtual_device import VirtualDevice
 
 # Class that handles SIGINT and SIGTERM gracefully
 class Killer:
@@ -20,19 +20,19 @@ class Killer:
         self.kill_now = True
 
 # Function that acquires the requested measurements
-def acquire(measures):
+def acquire(probes):
     readings = []
     max_fails = 5
-    for i, m in enumerate(measures):
+    for i, p in enumerate(probes):
         # Try to get the measurement, allow for a few consecutive failures
         fail_count = 0
         while fail_count < max_fails:
             try:
-                readings.append(m.scale*m.inst.measure(m.meas))
+                readings.append(p.scale*p.probe(p.inst, p.meas))
                 break
             except Exception as e:
                 logger.log(str(e), logger.severity.error)
-                logger.log("Failed to read {}, retrying...".format(m.name), logger.severity.error)
+                logger.log("Failed to read {}, retrying...".format(p.name), logger.severity.error)
                 fail_count += 1
                 if fail_count >= max_fails:
                     logger.log("Too many consecutive fails, killing DAQ", logger.severity.fatal)
@@ -74,66 +74,54 @@ open(OUTPUT_FILE, 'w').close()
 output = CSVData(OUTPUT_FILE)
 logger.log("Created DAQ output file "+OUTPUT_FILE)
 
-# Add all the required measurements to the readout chain
-Measurement = namedtuple('Measurement', 'inst, meas, scale, name, unit')
-measures = []
-for measure in cfg['measurements'].values():
-    # Determine the instrument to use
+# Add all the required probes (lambda functions) to the readout chain
+inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
+Probe = namedtuple('Probe', 'inst, meas, probe, scale, name, unit')
+probes = []
+for k, i in cfg['instruments'].items():
+    # Set up the instrument
+    logger.log("Setting up instrument {} of type {}".format(k, i['type']))
     inst = None
-    meas_inst = measure['instrument']
-    logger.log("Setting up instrument "+meas_inst)
-    if meas_inst == 'dmm6500':
-        inst = ik.generic_scpi.SCPIMultimeter
-    elif meas_inst == 'keithley485':
-        inst = ik.keithley.Keithley485
-    elif meas_inst == 'fluke3000':
-        inst = ik.fluke.Fluke3000
-    elif meas_inst == 'virtual':
-        inst = Virtual(measure['device'], measure['value'])
+    if i['type'] == 'virtual':
+        inst = VirtualDevice(k)
+    elif i['type'] in inst_types:
+        try:
+            inst = getattr(getattr(ik, i['make']), i['model'])
+        except AttributeError:
+            raise ValueError('Instrument {} not found in InstrumentKit'.format(i['model']))
     else:
-        raise(Exception('Instrument not supported: '+meas_inst))
+        raise ValueError('Instrument type not supported: {}'.format(i['type']))
 
-    # Determine the quantity requested
-    meas = None
-    meas_quan = measure['quantity']
-    logger.log("Setting up "+meas_quan+" measurement")
-    if meas_quan == 'current':
-        meas = inst.Mode.current_dc
-    elif meas_quan == 'voltage':
-        meas = inst.Mode.voltage_dc
-    elif meas_quan == 'temperature':
-        meas = inst.Mode.temperature
-    elif meas_quan == 'virtual':
-        meas = inst.Mode.default
-    else:
-        raise(Exception('Quantity not supported: '+meas_quan))
+    # Initialize the communication link
+    if i['type'] != 'virtual':
+        logger.log("Initializing communication protocol {}".format(i['comm']))
+        try:
+            inst = getattr(inst, 'open_'+i['comm'])(**i['comm_args'])
+        except AttributeError:
+            raise ValueError('Protocol not supported: {}'.format(i['comm']))
 
-    # Open the requested port
-    meas_pro = measure['protocol']
-    meas_dev = measure['device']
-    logger.log("Initializing device "+meas_dev+" with protocol "+meas_pro)
-    if meas_pro == 'usbtmc':
-        inst = inst.open_file(meas_dev)
-    elif meas_pro == 'serial':
-        inst = inst.open_serial(meas_dev, measure['baud'])
-    elif meas_pro == 'gpib':
-        inst = inst.open_gpibusb(meas_dev, measure['port'], model=measure['model'])
-    elif meas_pro == 'virtual':
-        pass
-    else:
-        raise(Exception('Protocol not supported: '+meas_pro))
+    # Initalize a probe for each measurement
+    for m in i['measurements'].values():
+        logger.log("Setting up {} measurement of name {}".format(m['quantity'], m['name']))
+        meas, probe = None, None
+        if i['type'] == 'instrument':
+            probe = lambda inst, _: inst.measure()
+        elif i['type'] == 'multimeter':
+            meas = getattr(inst.Mode, m['quantity'])
+            probe = lambda inst, meas: inst.measure(meas)
+        else:
+            meas = getattr(inst, m['quantity'])
+            if 'value' in m:
+                meas = m['value']
+            probe = lambda _, meas: meas
 
-    # Append a measurement object
-    measures.append(Measurement(
-                        inst = inst,
-                        meas = meas,
-                        scale = measure['scale'],
-                        name = measure['name'],
-                        unit = measure['unit']))
+        # Append a probe object
+        probes.append(Probe(inst = inst, meas = meas, probe = probe,
+                            scale = m['scale'], name = m['name'], unit = m['unit']))
 
 # Create dictionary keys
 keys = ['time']
-for m in measures:
+for m in probes:
     keys.append('{} [{}]'.format(m.name, m.unit))
 logger.log("DAQ recording keys: ["+",".join(keys)+"]")
 
@@ -147,7 +135,7 @@ ite_count, perc_count, min_count = 0, 0, 0
 killer = Killer()
 while (not SAMPLING_TIME or (curr_time - init_time) < SAMPLING_TIME) and not killer.kill_now:
     # Acquire measurements
-    readings = acquire(measures)
+    readings = acquire(probes)
     if not readings:
         break
 

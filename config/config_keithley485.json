@@ -2,17 +2,25 @@
   "sampling_time":0.0,
   "refresh_rate":0.0,
   "output_name":"current_daq",
-  "measurements":{
-    "current":{
-      "instrument":"keithley485",
-      "protocol":"gpib",
-      "device":"/dev/ttyUSB0",
-      "port":22,
-      "model":"pl",
-      "quantity":"current",
-      "scale":1000000000,
-      "name":"Current",
-      "unit":"nA" 
+  "instruments":{
+    "keithley485":{
+      "type":"instrument",
+      "make":"keithley",
+      "model":"Keithley485",
+      "comm":"gpibusb",
+      "comm_args":{
+        "port":"/dev/ttyUSB0",
+        "gpib_address":22,
+        "model":"pl"
+      },
+      "measurements":{
+        "current":{
+          "quantity":"current_dc",
+          "scale":1.0e9,
+          "name":"Current",
+          "unit":"nA"
+        }
+      }
     }
   }
 }

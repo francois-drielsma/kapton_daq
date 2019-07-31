@@ -1,17 +1,31 @@
 {
   "sampling_time":0.0,
   "refresh_rate":0.0,
-  "output_name":"temp_daq",
-  "measurements":{
-    "temperature":{
-      "instrument":"fluke3000",
-      "protocol":"serial",
-      "baud":115200,
-      "device":"/dev/ttyUSB0",
-      "quantity":"temperature",
-      "scale":1,
-      "name":"Temperature",
-      "unit":"C"
+  "output_name":"fluke_daq",
+  "instruments":{
+    "fluke3000":{
+      "type":"multimeter",
+      "make":"fluke",
+      "model":"Fluke3000",
+      "comm":"serial",
+      "comm_args":{
+        "port":"/dev/ttyUSB0",
+        "baud":115200
+      },
+      "measurements":{
+        "temperature":{
+          "quantity":"temperature",
+          "scale":1.0,
+          "name":"Temperature",
+          "unit":"C"
+        },
+        "voltage":{
+          "quantity":"voltage_dc",
+          "scale":1.0,
+          "name":"Voltage",
+          "unit":"V"
+        }
+      }
     }
   }
 }
