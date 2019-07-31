@@ -1,0 +1,27 @@
+{
+  "sampling_time":0.0,
+  "refresh_rate":0.0,
+  "output_name":"psu_monitor",
+  "instruments":{
+    "hpe3631a":{
+      "type":"power_supply",
+      "make":"hp",
+      "model":"HPe3631a",
+      "comm":"serial",
+      "comm_args":{
+        "port":"/dev/ttyUSB1",
+        "baud":9600
+      },
+      "measurements":{
+        "voltage":{
+          "channel":1,
+          "quantity":"voltage",
+          "scale":1.0,
+          "name":"PSU Voltage",
+          "unit":"V",
+          "value":5.0
+        }
+      }
+    }
+  }
+}

@@ -110,10 +110,13 @@ for k, i in cfg['instruments'].items():
             meas = getattr(inst.Mode, m['quantity'])
             probe = lambda inst, meas: inst.measure(meas)
         else:
-            meas = getattr(inst, m['quantity'])
+            if 'channel' in m:
+                inst = inst.channel[m['channel']]
+            meas = inst.__class__.__dict__[m['quantity']]
             if 'value' in m:
-                meas = m['value']
-            probe = lambda _, meas: meas
+                meas.fset(inst, m['value'])
+                time.sleep(0.1)
+            probe = lambda inst, meas: meas.fget(inst)
 
         # Append a probe object
         probes.append(Probe(inst = inst, meas = meas, probe = probe,
