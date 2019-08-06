@@ -1,0 +1,39 @@
+{
+  "sampling_time":0.0,
+  "refresh_rate":0.0,
+  "output_name":"psu_monitor",
+  "instruments":{
+    "glassmanfr":{
+      "type":"power_supply",
+      "make":"glassman",
+      "model":"GlassmanFR",
+      "comm":"serial",
+      "comm_args":{
+        "port":"/dev/ttyUSB1",
+        "baud":9600
+      },
+      "measurements":{
+        "voltage":{
+          "quantity":"voltage",
+          "scale":1.0,
+          "name":"PSU Voltage",
+          "unit":"V",
+          "value":100.0
+        },
+        "voltage_sense":{
+          "quantity":"voltage_sense",
+          "scale":1.0,
+          "name":"PSU Sense Voltage",
+          "unit":"V"
+        },
+        "current":{
+          "quantity":"current",
+          "scale":1.0,
+          "name":"PSU Current",
+          "unit":"A",
+          "value":0.001
+        }
+      }
+    }
+  }
+}
