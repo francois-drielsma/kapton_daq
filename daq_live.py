@@ -705,7 +705,7 @@ def update_display_options(daq_data, disp_options, disp_values):
         options = [{'label': key_elements(key)[0], 'value': key} for key in keys]
         if options == disp_options:
             return disp_options, disp_values
-            
+
         return options, keys
 
     return [], []

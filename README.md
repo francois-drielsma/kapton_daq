@@ -11,7 +11,7 @@ This package is written in Python 3.
 The following packages must be installed:
 
 ```bash
-pip3 install plotly dash dash_daq psutil pandas numpy matplotlib 
+pip3 install plotly dash dash_daq psutil pandas numpy matplotlib
 ```
 
 ## Install the InstrumentKit repository
@@ -121,6 +121,26 @@ For more information about the available arguments, run
 ```bash
 python3 daq.py -h
 ```
+
+### Build a configuration file
+
+Several examples of working configuration files are provided
+in the `config` directory. Each configuration file is a
+dictionary expressed in the JSON file-format which contains:
+  - `sampling_time`: amount of time to run the DAQ
+  - `refresh_rate`: frequency at which to acquire data
+  - `output_name`: name of the data file to be produced
+  - `instruments`: dictionary of instruments each containing
+    - `type`: InstrumentKit instrument type (e.g. `multimeter`, `power_supply`, etc.)
+    - `make`: InstrumentKit instrument maker (e.g. `fluke`, `hp`, etc.)
+    - `model`: InstrumentKit instrument model (e.g. `Fluke3000`, `HPe3631a`, etc.)
+    - `comm`: InstrumentKit communication protocol (e.g. `serial`, `file`, etc.)
+    - `comm_args`: InstrumentKit communication protocol parameters
+    - `measurements`: dictionary of measurements to take, each containing:
+      - `quantity`: quantity to measure (e.g. `voltage_dc`, `temperature`, etc.)
+      - `scale`: factor by which to multiply all measurements
+      - `name`: name of the variable to measure
+      - `unit`: unit of the measurement
 
 ### Draw the output separately
 
