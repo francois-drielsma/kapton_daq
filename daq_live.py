@@ -387,7 +387,7 @@ app.layout = html.Div([
 
         # Element that allows you to update components on a predefined interval
         dcc.Interval(
-            id="interval-log-update",
+            id="interval-update",
             n_intervals=0
         ),
 
@@ -576,7 +576,7 @@ def daq_controller(nstart, nstop, pid, log_file, cfg_name, out_name):
 
 # App callback that initializes the auto-refresh interval
 # when the DAQ is started or stopped (matched to DAQ status)
-@app.callback(Output('interval-log-update', 'interval'),
+@app.callback(Output('interval-update', 'interval'),
               [Input('store-process-id', 'data')])
 def daq_controller(pid):
     if pid:
@@ -587,7 +587,7 @@ def daq_controller(pid):
 # App callback that automatically presses the stop
 # button if the DAQ process has died
 @app.callback(Output('button-stop-daq', 'n_clicks'),
-              [Input('interval-log-update', 'n_intervals')],
+              [Input('interval-update', 'n_intervals')],
               [State('store-process-id', 'data'),
                State('button-stop-daq', 'n_clicks')])
 def check_daq_process(_, pid, nstop):
@@ -676,7 +676,7 @@ def update_data_list(daq_disable):
 # when the file selection dropdown is activatived
 # or the automatic reload is triggered
 @app.callback(Output('store-daq-data', 'data'),
-              [Input('interval-log-update', 'n_intervals'),
+              [Input('interval-update', 'n_intervals'),
                Input('dropdown-file-selection', 'value')])
 def update_data_file(_, daq_file):
     if daq_file:
@@ -696,11 +696,16 @@ def update_data_file(_, daq_file):
 # contain the same measurements
 @app.callback([Output('checklist-display-options-daq', 'options'),
                Output('checklist-display-options-daq', 'value')],
-              [Input('store-daq-data', 'data')])
-def update_display_options(daq_data):
+              [Input('store-daq-data', 'data')],
+              [State('checklist-display-options-daq', 'options'),
+               State('checklist-display-options-daq', 'value')])
+def update_display_options(daq_data, disp_options, disp_values):
     if daq_data:
         keys = data_keys(daq_data)
         options = [{'label': key_elements(key)[0], 'value': key} for key in keys]
+        if options == disp_options:
+            return disp_options, disp_values
+            
         return options, keys
 
     return [], []
@@ -708,7 +713,7 @@ def update_display_options(daq_data):
 # App callback that updates the log file displayed
 # when the page is refreshed
 @app.callback(Output('text-log', 'value'),
-              [Input('interval-log-update', 'n_intervals'),
+              [Input('interval-update', 'n_intervals'),
                Input('store-log-path', 'data')])
 def update_log_file(_, log_file):
     if log_file:
