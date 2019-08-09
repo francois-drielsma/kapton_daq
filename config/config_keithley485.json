@@ -16,9 +16,8 @@
       "measurements":{
         "current":{
           "quantity":"current_dc",
-          "scale":1.0e9,
-          "name":"Current",
-          "unit":"nA"
+          "unit":"nanoamp",
+          "name":"Current"
         }
       }
     }

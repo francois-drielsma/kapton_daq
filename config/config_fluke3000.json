@@ -15,15 +15,13 @@
       "measurements":{
         "temperature":{
           "quantity":"temperature",
-          "scale":1.0,
-          "name":"Temperature",
-          "unit":"C"
+          "unit":"celsius",
+          "name":"Temperature"
         },
         "voltage":{
           "quantity":"voltage_dc",
-          "scale":1.0,
-          "name":"Voltage",
-          "unit":"V"
+          "unit":"volt",
+          "name":"Voltage"
         }
       }
     }

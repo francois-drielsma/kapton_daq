@@ -5,6 +5,7 @@ import datetime
 import json
 import argparse
 import instruments as ik
+import quantities as pq
 from collections import namedtuple
 from utils.logger import Logger, CSVData
 from utils.virtual_device import VirtualDevice
@@ -19,6 +20,14 @@ class Killer:
     def exit(self, signum, frame):
         self.kill_now = True
 
+# Function that checks that the value returned has the required units
+def convert_units(value, units):
+    if not isinstance(value, pq.Quantity):
+        return pq.Quantity(value, units)
+    if units != val.units:
+        return value.rescale(units)
+    return value
+
 # Function that acquires the requested measurements
 def acquire(probes):
     readings = []
@@ -28,7 +37,7 @@ def acquire(probes):
         fail_count = 0
         while fail_count < max_fails:
             try:
-                readings.append(p.scale*p.probe(p.inst, p.meas))
+                readings.append(convert_units(p.probe(p.inst, p.meas), p.unit))
                 break
             except Exception as e:
                 logger.log(str(e), logger.severity.error)
@@ -76,7 +85,7 @@ logger.log("Created DAQ output file "+OUTPUT_FILE)
 
 # Add all the required probes (lambda functions) to the readout chain
 inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
-Probe = namedtuple('Probe', 'inst, meas, probe, scale, name, unit')
+Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
 probes = []
 for k, i in cfg['instruments'].items():
     # Set up the instrument
@@ -103,6 +112,7 @@ for k, i in cfg['instruments'].items():
     # Initalize a probe for each measurement
     for m in i['measurements'].values():
         logger.log("Setting up {} measurement of name {}".format(m['quantity'], m['name']))
+        unit = getattr(pq, m['unit'])
         meas, probe = None, None
         if i['type'] == 'instrument':
             probe = lambda inst, _: inst.measure()
@@ -114,19 +124,20 @@ for k, i in cfg['instruments'].items():
                 inst = inst.channel[m['channel']]
             meas = inst.__class__.__dict__[m['quantity']]
             if 'value' in m:
-                logger.log("Setting {} to {} {}".format(m['name'], m['value'], m['unit']))
+                logger.log("Setting {} to {} {}".format(m['name'], m['value'],unit.u_symbol))
                 meas.fset(inst, m['value'])
                 time.sleep(0.1)
+            if i['type'] == 'virtual':
+                inst.unit = unit
             probe = lambda inst, meas: meas.fget(inst)
 
         # Append a probe object
-        probes.append(Probe(inst = inst, meas = meas, probe = probe,
-                            scale = m['scale'], name = m['name'], unit = m['unit']))
+        probes.append(Probe(inst = inst, meas = meas, probe = probe, unit = unit, name = m['name']))
 
 # Create dictionary keys
 keys = ['time']
 for m in probes:
-    keys.append('{} [{}]'.format(m.name, m.unit))
+    keys.append('{} [{}]'.format(m.name, m.unit.u_symbol))
 logger.log("DAQ recording keys: ["+",".join(keys)+"]")
 
 # Loop for the requested amount of time

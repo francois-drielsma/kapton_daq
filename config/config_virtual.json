@@ -3,26 +3,24 @@
   "refresh_rate":0.1,
   "output_name":"virtual_daq",
   "instruments":{
-    "virtual0":{
+    "virtual_temp":{
       "type":"virtual",
       "measurements":{
         "temperature":{
           "quantity":"value",
+          "unit":"celsius",
           "name":"Temperature",
-          "scale":1.0,
-          "unit":"C",
           "value":25.0
         }
       }
     },
-    "virtual1":{
+    "virtual_voltage":{
       "type":"virtual",
       "measurements":{
         "temperature":{
           "quantity":"value",
+          "unit":"volt",
           "name":"Voltage",
-          "scale":1.0,
-          "unit":"V",
           "value":10.0
         }
       }

@@ -9,16 +9,15 @@
       "model":"HPe3631a",
       "comm":"serial",
       "comm_args":{
-        "port":"/dev/ttyUSB1",
+        "port":"/dev/ttyUSB0",
         "baud":9600
       },
       "measurements":{
         "voltage":{
-          "channel":1,
           "quantity":"voltage",
-          "scale":1.0,
+          "unit":"volt",
           "name":"PSU Voltage",
-          "unit":"V",
+          "channel":1,
           "value":5.0
         }
       }
