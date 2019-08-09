@@ -24,7 +24,7 @@ class Killer:
 def convert_units(value, units):
     if not isinstance(value, pq.Quantity):
         return pq.Quantity(value, units)
-    if units != val.units:
+    if units != value.units:
         return value.rescale(units)
     return value
 
