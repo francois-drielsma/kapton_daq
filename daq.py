@@ -142,17 +142,17 @@ class DAQ:
                     meas = getattr(inst.Mode, m['quantity'])
                     probe = lambda inst, meas: inst.measure(meas)
                 else:
-                    if 'channel' in m:
-                        inst = inst.channel[m['channel']]
+                    if i['type'] == 'power_supply':
+                        if 'channel' in m:
+                            inst = inst.channel[m['channel']]
+                        inst.output = True
+
                     meas = inst.__class__.__dict__[m['quantity']]
                     if 'value' in m:
                         self.log("Setting {} to {} {}".format(m['name'], m['value'],unit.u_symbol))
                         meas.fset(inst, m['value'])
                         time.sleep(0.1)
-                    if i['type'] == 'virtual':
-                        inst.unit = unit
-                    else:
-                        inst.output = True
+
                     probe = lambda inst, meas: meas.fget(inst)
 
                 # Append the list of data keys
