@@ -21,7 +21,7 @@ class DAQ:
         # Global parameters
         self._time = 0.         # Data acquisition time
         self._rate = 0.         # Minimum time between acquisitions
-        self._max_fails = 25    # Maximum allowed number of failed reads
+        self._max_fails = 15    # Maximum allowed number of failed reads
         self._output_name = ''  # Output file name
         self._output = None     # Output file
 
@@ -90,11 +90,9 @@ class DAQ:
         self._cfg = json.load(cfg_file)
 
         # Set global parameters
-        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
         self._time = self._cfg['sampling_time'] if not args.sampling else args.sampling
         self._rate = self._cfg['refresh_rate'] if not args.refresh else args.refresh
-        self._output_name = 'data/{}_{}.csv'.format(
-            date_str, self._cfg['output_name']) if not args.outfile else args.outfile
+        self._output_name = self._cfg['output_name'] if not args.outfile else args.outfile
 
     def initialize_logger(self):
         """
@@ -167,9 +165,13 @@ class DAQ:
         """
         Initialize output file.
         """
-        open(self._output_name, 'w').close()
-        self._output = CSVData(self._output_name)
-        self.log("Created DAQ output file {}".format(self._output_name))
+        output_name = self._output_name
+        if 'csv' not in output_name:
+            date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+            output_name = 'data/{}_{}.csv'.format(date_str, output_name)
+        open(output_name, 'w').close()
+        self._output = CSVData(output_name)
+        self.log("Created DAQ output file {}".format(output_name))
         self.log("DAQ recording keys: [{}]".format(','.join(self._data_keys)))
 
     def log(self, message, severity=Logger.severity.info):
