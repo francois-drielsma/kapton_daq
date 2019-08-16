@@ -21,7 +21,7 @@ class DAQ:
         # Global parameters
         self._time = 0.         # Data acquisition time
         self._rate = 0.         # Minimum time between acquisitions
-        self._max_fails = 15    # Maximum allowed number of failed reads
+        self._max_fails = 16    # Maximum allowed number of failed reads
         self._output_name = ''  # Output file name
         self._output = None     # Output file
 
@@ -193,14 +193,15 @@ class DAQ:
         serr, sfat = Logger.severity.error, Logger.severity.fatal
         self.log("Failed to read {} {} time(s)".format(probe.name, fail_count), serr)
         self.log("Got instrument reading error: {}".format(error), serr)
-        self.log("Will retry in one second...", serr)
-        time.sleep(1)
         if fail_count == self._max_fails:
             self.log("Too many consecutive fails, killing DAQ...", sfat)
             return False
-        if fail_count and fail_count % 5 == 0:
-            self.log("Five consecutive fails, reinitializing probes...", serr)
-            self.initialize_probes()
+        elif fail_count and fail_count % 5 == 0:
+            self.log("Five consecutive fails, will retry in one minute...", serr)
+            time.sleep(60)
+        else:
+            self.log("Will retry in one second...", serr)
+            time.sleep(1)
 
         return True
 
