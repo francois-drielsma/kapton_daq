@@ -14,7 +14,7 @@ The following packages must be installed:
 pip3 install plotly dash dash_daq psutil pandas numpy matplotlib
 ```
 
-## Install the InstrumentKit repository
+## Install the InstrumentKit (`IK`) repository
 
 The InstrumentKit package supports communications through
 a variety of protocols (GPIB, RS232, USBTMC, etc.). Only
@@ -126,21 +126,22 @@ python3 daq.py -h
 
 Several examples of working configuration files are provided
 in the `config` directory. Each configuration file is a
-dictionary expressed in the JSON file-format which contains:
+dictionary expressed in the YAML file-format which contains:
   - `sampling_time`: amount of time to run the DAQ
   - `refresh_rate`: frequency at which to acquire data
   - `output_name`: name of the data file to be produced
   - `instruments`: dictionary of instruments each containing
-    - `type`: InstrumentKit instrument type (e.g. `multimeter`, `power_supply`, etc.)
-    - `make`: InstrumentKit instrument maker (e.g. `fluke`, `hp`, etc.)
-    - `model`: InstrumentKit instrument model (e.g. `Fluke3000`, `HPe3631a`, etc.)
-    - `comm`: InstrumentKit communication protocol (e.g. `serial`, `file`, etc.)
-    - `comm_args`: InstrumentKit communication protocol parameters
+    - `type`: `IK` instrument type (e.g. `multimeter`, `power_supply`, etc.)
+    - `make`: `IK` instrument maker (e.g. `fluke`, `hp`, etc.)
+    - `model`: `IK` instrument model (e.g. `Fluke3000`, `HPe3631a`, etc.)
+    - `comm`: `IK` communication protocol (e.g. `serial`, `file`, etc.)
+    - `comm_args`: `IK` communication protocol parameters
     - `measurements`: dictionary of measurements to take, each containing:
-      - `quantity`: quantity to measure (e.g. `voltage_dc`, `temperature`, etc.)
-      - `scale`: factor by which to multiply all measurements
-      - `name`: name of the variable to measure
-      - `unit`: unit of the measurement
+      - `quantity`: `IK` quantity to measure (e.g. `voltage_dc`, `temperature`, etc.)
+      - `unit`: `quantities` unit of measurement (e.g. `millivolt`, `kelvin`, etc.)
+      - `name`: name of the variable to measure (CSV output column name)
+      - `value` (optional): sets initial value of measurement (if power supply or virtual)
+      - `channel` (optional): specifies power supply channel id
 
 ### Draw the output separately
 

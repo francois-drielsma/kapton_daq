@@ -1,0 +1,21 @@
+sampling_time: 0.0
+refresh_rate: 0.0
+output_name: fluke3000_daq
+instruments:
+  fluke3000:
+    type: multimeter
+    make: fluke
+    model: Fluke3000
+    comm: serial
+    comm_args:
+      port: /dev/ttyUSB0
+      baud: 115200
+    measurements:
+      temperature:
+        quantity: temperature
+        unit: celsius
+        name: Temperature
+      voltage:
+        quantity: voltage_dc
+        unit: volt
+        name: Voltage

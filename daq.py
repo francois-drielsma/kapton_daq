@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import time
 import signal
 import datetime
-import json
+import yaml
 import argparse
 import instruments as ik
 import quantities as pq
@@ -85,9 +85,9 @@ class DAQ:
         args = parser.parse_args()
 
         # Load the configuration
-        self._cfg_name = 'config/config_default.json' if not args.config else args.config
-        cfg_file = open(self._cfg_name)
-        self._cfg = json.load(cfg_file)
+        self._cfg_name = 'config/config_default.yaml' if not args.config else args.config
+        with open(self._cfg_name, 'r') as cfg_file:
+            self._cfg = yaml.safe_load(cfg_file)
 
         # Set global parameters
         self._time = self._cfg['sampling_time'] if not args.sampling else args.sampling

@@ -1,0 +1,18 @@
+sampling_time: 0.0
+refresh_rate: 0.0
+output_name: keithley485_daq
+instruments:
+  keithley485:
+    type: instrument
+    make: keithley
+    model: Keithley485
+    comm: gpibusb
+    comm_args:
+      port: /dev/ttyUSB0
+      gpib_address: 22
+      model: pl
+    measurements:
+      current:
+        quantity: current_dc
+        unit: nanoamp
+        name: Current

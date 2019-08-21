@@ -1,0 +1,19 @@
+sampling_time: 0.0
+refresh_rate: 0.0
+output_name: hpe3631a_daq
+instruments:
+  hpe631a:
+    type: power_supply
+    make: hp
+    model: HPe3631a
+    comm: serial
+    comm_args:
+      port: /dev/ttyUSB0
+      baud: 9600
+    measurements:
+      voltage:
+        quantity: voltage
+        unit: volt
+        name: PSU Voltage
+        value: 5.0
+        channel: 1

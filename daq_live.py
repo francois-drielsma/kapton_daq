@@ -17,6 +17,7 @@ import sys
 import time
 import datetime
 import json
+import yaml
 
 # Initialize the app
 app = dash.Dash(__name__)
@@ -196,7 +197,7 @@ def div_daq_controls():
             dcc.Dropdown(
                 id='dropdown-config-selection',
                 options=config_options,
-                value=dirs['cfg']+'/config_default.json',
+                value=dirs['cfg']+'/config_default.yaml',
                 className='twelve columns',
                 clearable=False,
                 searchable=False,
@@ -614,8 +615,8 @@ def enable_daq_controls(daq_disable):
 def update_config_file(cfg_name):
     if cfg_name:
         with open(cfg_name, 'r') as cfg_file:
-            cfg = json.load(cfg_file)
-            return json.dumps(cfg, indent=2), cfg['output_name']
+            cfg = yaml.safe_load(cfg_file)
+            return yaml.dump(cfg), cfg['output_name']
 
     return '', ''
 

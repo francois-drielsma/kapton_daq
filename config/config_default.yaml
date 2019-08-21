@@ -1,0 +1,33 @@
+sampling_time: 0.0
+refresh_rate: 0.0
+output_name: kapton_daq
+instruments:
+  dmm6500:
+    type: multimeter
+    make: generic_scpi
+    model: SCPIMultimeter
+    comm: file
+    comm_args:
+      filename: /dev/usbtmc0
+    measurements:
+      current:
+        quantity: current_dc
+        unit: nanoamp
+        name: Current
+  fluke3000:
+    type: multimeter
+    make: fluke
+    model: Fluke3000
+    comm: serial
+    comm_args:
+      port: /dev/ttyUSB0
+      baud: 115200
+    measurements:
+      temperature:
+        quantity: temperature
+        unit: celsius
+        name: Temperature
+      voltage:
+        quantity: voltage_dc
+        unit: volt
+        name: Voltage
