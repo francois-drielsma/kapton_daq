@@ -18,8 +18,9 @@ pip3 install plotly dash dash_daq psutil pandas numpy matplotlib
 
 The InstrumentKit package supports communications through
 a variety of protocols (GPIB, RS232, USBTMC, etc.). Only
-the branch of `francois-drielsma` supports the Fluke 3000 FC
-and Keithley 485 devices, so pull that one specifically.
+the fork of `francois-drielsma` supports the Fluke 3000 FC,
+Keithley 485, HP E3631A and Glassman FR-series devices,
+so pull that one specifically.
 
 1. Pull the repository
 
@@ -90,19 +91,21 @@ python3 daq_live.py
 and then open the app into a browser (click on the link in the terminal).
 
 The DAQ live viewer currently contains the following features:
- - Live graph(s) of the measurements performed by the DAQ
-   - Display of elapsed DAQ time
-   - Data file selector
-   - Selection of curves to display
-   - Selection of display style
-   - Display of last readings
- - DAQ Controls:
-   - Start and stop button which run `daq.py` in the background
-   - Name input box (to specify the DAQ output file name)
-   - Configuration file selector
-   - Configuration file display
- - Virtual Controls:
-   - Set the value of virtual devices
+  - Live graph(s) of the measurements performed by the DAQ
+    - Display of elapsed DAQ time
+    - Data file selector
+    - Selection of curves to display
+    - Selection of display style
+    - Display of last readings
+  - DAQ Controls:
+    - Start and stop button which run `daq.py` in the background
+    - Name input box (to specify the DAQ output file name)
+    - Configuration file selector
+    - Configuration file display
+  - Virtual Controls:
+    - Set the value of virtual devices
+  - DAQ Log:
+    - Log of the last running `daq.py` process
 
 ![kapton_daq](https://francois-drielsma.github.io/kapton_daq/kapton_daq.png)
 
@@ -134,8 +137,9 @@ dictionary expressed in the YAML file-format which contains:
     - `type`: `IK` instrument type (e.g. `multimeter`, `power_supply`, etc.)
     - `make`: `IK` instrument maker (e.g. `fluke`, `hp`, etc.)
     - `model`: `IK` instrument model (e.g. `Fluke3000`, `HPe3631a`, etc.)
-    - `comm`: `IK` communication protocol (e.g. `serial`, `file`, etc.)
-    - `comm_args`: `IK` communication protocol parameters
+    - `comm`: `IK` communication protocol
+      - `type`: protocol type (e.g. `serial`, `file`, etc.)
+      - `args`: protocol parameters
     - `measurements`: dictionary of measurements to take, each containing:
       - `quantity`: `IK` quantity to measure (e.g. `voltage_dc`, `temperature`, etc.)
       - `unit`: `quantities` unit of measurement (e.g. `millivolt`, `kelvin`, etc.)
