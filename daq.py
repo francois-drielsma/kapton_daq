@@ -125,11 +125,11 @@ class DAQ:
 
             # Initialize the communication link
             if i['type'] != 'virtual':
-                self.log("Initializing communication protocol {}".format(i['comm']))
+                self.log("Initializing communication protocol {}".format(i['comm']['type']))
                 try:
-                    inst = getattr(inst, 'open_'+i['comm'])(**i['comm_args'])
+                    inst = getattr(inst, 'open_'+i['comm']['type'])(**i['comm']['args'])
                 except AttributeError:
-                    raise ValueError('Protocol not supported: {}'.format(i['comm']))
+                    raise ValueError('Protocol not supported: {}'.format(i['comm']['type']))
 
             # Initalize a probe for each measurement
             for m in i['measurements'].values():

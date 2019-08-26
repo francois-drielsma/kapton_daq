@@ -6,10 +6,11 @@ instruments:
     type: multimeter
     make: fluke
     model: Fluke3000
-    comm: serial
-    comm_args:
-      port: /dev/ttyUSB0
-      baud: 115200
+    comm:
+      type: serial
+      args:
+        port: /dev/ttyUSB0
+        baud: 115200
     measurements:
       temperature:
         quantity: temperature

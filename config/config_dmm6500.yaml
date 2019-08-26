@@ -6,9 +6,10 @@ instruments:
     type: multimeter
     make: generic_scpi
     model: SCPIMultimeter
-    comm: file
-    comm_args:
-      filename: /dev/usbtmc0
+    comm:
+      type: file
+      args:
+        filename: /dev/usbtmc0
     measurements:
       current:
         quantity: current_dc

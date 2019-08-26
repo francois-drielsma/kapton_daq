@@ -6,10 +6,11 @@ instruments:
     type: power_supply
     make: hp
     model: HPe3631a
-    comm: serial
-    comm_args:
-      port: /dev/ttyUSB0
-      baud: 9600
+    comm:
+      type: serial
+      args:
+        port: /dev/ttyUSB0
+        baud: 9600
     measurements:
       voltage:
         quantity: voltage
