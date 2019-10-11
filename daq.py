@@ -66,6 +66,8 @@ class DAQ:
             return pq.Quantity(value, units)
         if units != value.units:
             return value.rescale(units)
+        if isinstance(units, pq.unitquantity.UnitTemperature):
+            return ik.util_fns.convert_temperature(value, units)
         return value
 
     def parse_config(self):
