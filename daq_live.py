@@ -1,3 +1,4 @@
+from _plotly_future_ import v4_subplots
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
@@ -70,7 +71,7 @@ def div_graph_daq():
         # Graph division
         html.Div(
             id='div-graph-daq',
-            className="nine columns"
+            className='nine columns'
         ),
         # List of options for the graph display
         html.Div([
@@ -85,21 +86,7 @@ def div_graph_daq():
 
             # Box that shows the elapsed time
             html.Div(
-                id="div-time-display"
-            ),
-
-            # Checklist of the measurements to plot
-            html.Div([
-                html.H6("Display selection", style={'font-weight': 'bold',
-                                                    'marginBottom': '0px'}),
-
-                dcc.Checklist(
-                    options = [],
-                    value = [],
-                    id='checklist-display-options-daq',
-                    style={'marginLeft': '20px'}
-                )
-            ],
+                id="div-time-display",
                 style={'margin-top': '10px'}
             ),
 
@@ -117,13 +104,35 @@ def div_graph_daq():
                     ],
                     value='overlap',
                     id='radio-display-mode-daq',
-                    style={'marginLeft': '20px'}
-                ),
+                    style={'marginLeft': '5px'}
+                )
+            ]),
 
-                html.Div(id='div-current-daq-value')
-            ])
+            # Checklist of the measurements to plot and their current values
+            html.Div([
+                html.Div([
+                    html.H6("Display selection", style={'font-weight': 'bold',
+                                                        'marginBottom': '0px'}),
+
+                    dcc.Checklist(
+                        options = [],
+                        value = [],
+                        id='checklist-display-options-daq',
+                        style={'marginLeft': '5px'}
+                    )
+                ],
+                className='six columns'),
+                
+                html.Div(id='div-current-daq-value',
+                         className='six columns')
+            ],
+                className='row',
+                style={'margin-top': '10px',
+                       'position':'relative'}
+            )
+
         ],
-            className="three columns"
+            className='three columns'
         ),
     ],
         className="row",
@@ -132,7 +141,7 @@ def div_graph_daq():
             "border-width": "5px",
             "border": "1px solid rgb(216, 216, 216)",
             "position": "relative",
-            "height": "460px"
+            "height": "480px"
         }
     )
 
@@ -243,22 +252,22 @@ def div_daq_controls():
         }
     )
 
-# Function that defines the HTML div that contains the virtual controls
-def div_virtual_controls():
+# Function that defines the HTML div that contains the device controls
+def div_device_controls():
     """
     Generates an html Div containing the DAQ controls
     """
     return html.Div([
 
         # Title
-        html.H4('Virtual Controls', style={"textAlign": "center"}),
+        html.H4('Device Controls', style={"textAlign": "center"}),
 
         # Div with the file selection and refresh rate
         html.Div([
 
-            # DAQ virtual devices setter
+            # DAQ device devices setter
             daq.StopButton(
-                id='button-virtual-set',
+                id='button-device-set',
                 children='Set',
                 disabled=True,
                 style={
@@ -270,7 +279,7 @@ def div_virtual_controls():
             ),
 
             dcc.Dropdown(
-                id='dropdown-virtual-selection',
+                id='dropdown-device-selection',
                 options=[],
                 className='twelve columns',
                 clearable=False,
@@ -286,7 +295,7 @@ def div_virtual_controls():
             ),
 
             dcc.Input(
-                id='input-virtual-value',
+                id='input-device-value',
                 placeholder='Enter a value...',
                 type='text',
                 value='',
@@ -380,7 +389,11 @@ app.layout = html.Div([
             },
         )
     ],
-        className="banner"
+        className="banner",
+        style={
+            'width':'96%',
+            'margin-top':'2%'
+        }
     ),
 
     # Main HTML division
@@ -401,13 +414,16 @@ app.layout = html.Div([
         # The html div storing the DAQ controls
         div_daq_controls(),
 
-        # The html div storing the virtual measurement control
-        div_virtual_controls(),
+        # The html div storing the device measurement control
+        div_device_controls(),
 
         # The html div storing the DAQ output
         div_daq_log()
     ],
-        className="container"
+        className="container",
+        style={
+            'width':'96%'
+        }
     )
 ])
 
@@ -567,7 +583,7 @@ def daq_controller(nstart, nstop, pid, log_file, cfg_name, out_name):
             print('The DAQ process has already been terminated')
             pass
 
-        # Delete the virtual devices
+        # Delete the device devices
         dev_files = [join(dirs['dev'], f) for f in listdir(dirs['dev'])]
         for dev in dev_files:
             remove(dev)
@@ -620,39 +636,39 @@ def update_config_file(cfg_name):
 
     return '', ''
 
-# App callback that matches the states of the virtual
+# App callback that matches the states of the device
 # controls to that of the DAQ stop button
-@app.callback([Output('dropdown-virtual-selection', 'options'),
-               Output('dropdown-virtual-selection', 'disabled'),
-               Output('input-virtual-value', 'disabled'),
-               Output('button-virtual-set', 'disabled')],
+@app.callback([Output('dropdown-device-selection', 'options'),
+               Output('dropdown-device-selection', 'disabled'),
+               Output('input-device-value', 'disabled'),
+               Output('button-device-set', 'disabled')],
               [Input('button-stop-daq', 'disabled')])
-def enable_virtual_controls(daq_disable):
-    # Update the list of virtual devices
+def enable_device_controls(daq_disable):
+    # Update the list of device devices
     dev_options = []
     if not daq_disable:
         dev_files = [join(dirs['dev'], f) for f in listdir(dirs['dev'])]
         dev_options = [{'label':f, 'value':f} for f in dev_files]
 
-    # Set the virtual controls
+    # Set the device controls
     return dev_options, daq_disable, daq_disable, daq_disable
 
-# App callback that sets the value of the selected virtual device
+# App callback that sets the value of the selected device device
 # according to the value displayed in the input box
-@app.callback(Output('button-virtual-set', 'label'),
-              [Input('button-virtual-set', 'n_clicks')],
-              [State('dropdown-virtual-selection', 'value'),
-               State('input-virtual-value', 'value')])
-def set_virtual(nclicks, virtual_name, virtual_value):
+@app.callback(Output('button-device-set', 'label'),
+              [Input('button-device-set', 'n_clicks')],
+              [State('dropdown-device-selection', 'value'),
+               State('input-device-value', 'value')])
+def set_device(nclicks, device_name, device_value):
     # If the necessary arguments are not set, skip
-    if nclicks is None or not virtual_name:
+    if nclicks is None or not device_name:
         return ''
 
     # Check that the value provided is a float, write to file
     try:
-        float(virtual_value)
-        with open(virtual_name, 'a+') as virtual_file:
-            virtual_file.write('\n'+virtual_value)
+        float(device_value)
+        with open(device_name, 'a+') as device_file:
+            device_file.write('\n'+device_value)
     except ValueError:
         pass
 
@@ -766,8 +782,7 @@ def update_div_time_display(daq_data):
 def update_div_current_daq_value(daq_data):
     div = [html.H6("Current values",
                      style={'font-weight': 'bold',
-                            'marginBottom': '0px',
-                            'marginTop': '10px'}
+                            'margin-bottom': '0px'}
                     )]
     if daq_data:
         daq_df = pd.read_json(daq_data, orient='split')
@@ -775,8 +790,8 @@ def update_div_current_daq_value(daq_data):
         for key in data_keys(daq_data):
             name, unit = key_elements(key)
             val = daq_df[key].iloc[-1]
-            values.append(html.Div(f"> {name}: {val:.4f} {unit}",
-                                   style={'marginLeft': '20px'}))
+            values.append(html.Div(f"{val:.4f} {unit}",
+                style={'marginLeft': '5px', 'font-weight':'bold'}))
         div += values
 
     return div
