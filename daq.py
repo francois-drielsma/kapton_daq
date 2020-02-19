@@ -147,6 +147,7 @@ class DAQ:
                     if i['type'] == 'power_supply':
                         if 'channel' in m:
                             inst = inst.channel[m['channel']]
+                        time.sleep(1)
                         inst.output = True
 
                     meas = inst.__class__.__dict__[m['quantity']]

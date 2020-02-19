@@ -18,9 +18,9 @@ time = data['time'] - init_time
 # Draw all quantities as a function of time
 for key in data.keys():
     if 'time' in key:
-        continue
         
+        continue
     plt.plot(time, data[key])
     plt.xlabel('Time [s]')
     plt.ylabel(key)
-    plt.savefig('output/'+name+'_'+key.split(' ')[0].lower()+'.pdf')
+    plt.savefig('output/'+name+'_'+key.split(' [')[0].lower()+'.pdf')
