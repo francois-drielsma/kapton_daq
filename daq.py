@@ -216,7 +216,7 @@ class DAQ:
         for i, p in enumerate(self._probes):
             for i in range(self._max_fails):
                 try:
-                    readings.append(self.read(p))
+                    readings.append(float(self.read(p)))
                     break
                 except Exception as e:
                     if not self.handle_fail(p, e, i+1):
