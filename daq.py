@@ -4,6 +4,7 @@ import signal
 import datetime
 import yaml
 import argparse
+import traceback
 import instruments as ik
 import quantities as pq
 from collections import namedtuple
@@ -78,8 +79,8 @@ class DAQ:
         parser = argparse.ArgumentParser()
         parser.add_argument('--config', type=str,
                             help="Sets the config file")
-        parser.add_argument('--outfile', type=str,
-                            help="Sets the output file name")
+        parser.add_argument('--name', type=str,
+                            help="Sets the DAQ name")
         parser.add_argument('--sampling', type=float,
                             help="Sets the amount of time the DAQ runs for")
         parser.add_argument('--refresh', type=float,
@@ -94,13 +95,16 @@ class DAQ:
         # Set global parameters
         self._time = self._cfg['sampling_time'] if not args.sampling else args.sampling
         self._rate = self._cfg['refresh_rate'] if not args.refresh else args.refresh
-        self._output_name = self._cfg['output_name'] if not args.outfile else args.outfile
+        self._output_name = self._cfg['output_name'] if not args.name else args.name
 
     def initialize_logger(self):
         """
         Initialize a Logger object.
         """
-        self._logger = Logger()
+        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+        log_name = 'log/{}_{}.log'.format(date_str, self._output_name)
+        print("Created new DAQ log under {}".format(log_name))
+        self._logger = Logger(log_name)
         self.log("Setting up DAQ with configuration {}".format(self._cfg_name))
 
     def initialize_probes(self):
@@ -164,14 +168,13 @@ class DAQ:
                 # Append a probe object
                 self._probes.append(Probe(inst, meas, probe, unit, m['name']))
 
+
     def initialize_output(self):
         """
         Initialize output file.
         """
-        output_name = self._output_name
-        if 'csv' not in output_name:
-            date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-            output_name = 'data/{}_{}.csv'.format(date_str, output_name)
+        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+        output_name = 'data/{}_{}.csv'.format(date_str, self._output_name)
         open(output_name, 'w').close()
         self._output = CSVData(output_name)
         self.log("Created DAQ output file {}".format(output_name))
@@ -195,7 +198,7 @@ class DAQ:
         """
         serr, sfat = Logger.severity.error, Logger.severity.fatal
         self.log("Failed to read {} {} time(s)".format(probe.name, fail_count), serr)
-        self.log("Got instrument reading error: {}".format(error), serr)
+        self.log("Got instrument reading error:\n{}".format(error), serr)
         if fail_count == self._max_fails:
             self.log("Too many consecutive fails, killing DAQ...", sfat)
             return False

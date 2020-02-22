@@ -122,7 +122,7 @@ def div_graph_daq():
                     )
                 ],
                 className='six columns'),
-                
+
                 html.Div(id='div-current-daq-value',
                          className='six columns')
             ],
@@ -334,7 +334,7 @@ def div_daq_log():
     return html.Div([
 
         # Title
-        html.H4('DAQ Log', style={"textAlign": "center"}),
+        html.H4('Last DAQ Log', style={"textAlign": "center"}),
 
         # Start and stop button
         html.Div([
@@ -532,47 +532,38 @@ def update_graph(daq_data,
 # disables the start button and enables the stop button,
 # initializes the auto-refresh interval
 @app.callback([Output('store-process-id', 'data'),
-               Output('store-log-path', 'data'),
                Output('button-start-daq', 'disabled'),
                Output('button-stop-daq', 'disabled')],
               [Input('button-start-daq', 'n_clicks'),
                Input('button-stop-daq', 'n_clicks')],
               [State('store-process-id', 'data'),
-               State('store-log-path', 'data'),
                State('dropdown-config-selection', 'value'),
                State('input-output-name', 'value')])
-def daq_controller(nstart, nstop, pid, log_file, cfg_name, out_name):
+def daq_controller(nstart, nstop, pid, cfg_name, out_name):
     # If first initialization or stop button pressed, enable the start button
     if nstart is None:
-        return '', log_file, False, True
+        return '', False, True
 
     # If no DAQ process is running, start one
     if not pid:
         # Count the amount of files currently in the data directory
         n_files = len(listdir(dirs['dat']))
 
-        # Initialize a log file
-        date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-        log_file = dirs['log']+"/{}_{}.log".format(date_str, out_name)
+        # Start the DAQ process
+        args = ['python3', 'daq.py', '--config', cfg_name, '--name', out_name]
+        pid = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True).pid
 
-        # Set the arguments to be passed to the daq process
-        output_file = dirs['dat']+"/{}_{}.csv".format(date_str, out_name)
-        args = ['python3', 'daq.py', '--config', cfg_name,\
-                '--outfile', output_file, '>', log_file, '2>&1']
-
-        # Initialize the process, record the process ID
-        proc = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True)
-        pid = proc.pid
-
-        # Wait for the program to produce a new CSV file
+        # Wait for the program to produce a new data file
         time_out = 60
         init_time = time.time()
         while (len(listdir(dirs['dat'])) == n_files and
                time.time()-init_time < time_out):
+            if not process_is_live(pid):
+                return '', False, True
             time.sleep(0.1)
 
         # Disable the start button
-        return str(pid), log_file, True, False
+        return str(pid), True, False
 
     # If there is one running, kill it
     else:
@@ -583,13 +574,13 @@ def daq_controller(nstart, nstop, pid, log_file, cfg_name, out_name):
             print('The DAQ process has already been terminated')
             pass
 
-        # Delete the device devices
+        # Delete the virtual devices
         dev_files = [join(dirs['dev'], f) for f in listdir(dirs['dev'])]
         for dev in dev_files:
             remove(dev)
 
         # Disable the stop button, disable autorefresh
-        return '', log_file, False, True
+        return '', False, True
 
 # App callback that initializes the auto-refresh interval
 # when the DAQ is started or stopped (matched to DAQ status)
@@ -609,8 +600,6 @@ def daq_controller(pid):
                State('button-stop-daq', 'n_clicks')])
 def check_daq_process(_, pid, nstop):
     if pid and not process_is_live(pid):
-        sys.stdout.flush()
-        sys.stderr.flush()
         return nstop + 1 if nstop else 1
     else:
         raise PreventUpdate
@@ -653,7 +642,7 @@ def enable_device_controls(daq_disable):
     # Set the device controls
     return dev_options, daq_disable, daq_disable, daq_disable
 
-# App callback that sets the value of the selected device device
+# App callback that sets the value of the selected device
 # according to the value displayed in the input box
 @app.callback(Output('button-device-set', 'label'),
               [Input('button-device-set', 'n_clicks')],
@@ -678,7 +667,7 @@ def set_device(nclicks, device_name, device_value):
 # data files when the DAQ has created a log file
 @app.callback([Output('dropdown-file-selection', 'options'),
                Output('dropdown-file-selection', 'value')],
-              [Input('store-log-path', 'data')])
+              [Input('store-process-id', 'data')])
 def update_data_list(daq_disable):
     # Update the list of data files, set the last DAQ output as current
     data_files = [join(dirs['dat'], f) for f in listdir(dirs['dat'])]
@@ -731,14 +720,17 @@ def update_display_options(daq_data, disp_options, disp_values):
 # when the page is refreshed
 @app.callback(Output('text-log', 'value'),
               [Input('interval-update', 'n_intervals'),
-               Input('store-log-path', 'data')])
-def update_log_file(_, log_file):
+               Input('store-process-id', 'data')])
+def update_log_file(_, __):
+    log_files = [join(dirs['log'], f) for f in listdir(dirs['log'])]
+    log_file = None
+    if len(log_files):
+        log_files.sort()
+        log_file = log_files[-1]
     if log_file:
-        try:
-            with open(log_file, 'r') as log:
-                return ''.join(log.readlines())
-        except:
-            pass
+        with open(log_file, 'r') as log:
+            message = 'Displaying log {}\n\n'.format(log_file)
+            return message+''.join(log.readlines())
     else:
         return 'DAQ log will appear here when available...'
 
