@@ -8,10 +8,8 @@ class VirtualDevice:
         """
         Reads the virtual device file, output the value read
         """
-        value = 0.
         with open(self._file_name, 'r') as virtual_file:
-            value = float(virtual_file.readlines()[-1])
-        return value
+            return float(virtual_file.readlines()[-1])
 
     @value.setter
     def value(self, newval):

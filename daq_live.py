@@ -1,4 +1,3 @@
-from _plotly_future_ import v4_subplots
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
@@ -36,12 +35,6 @@ for d in dirs.values():
         if e.errno != errno.EEXIST:
             raise
         pass
-
-# Function that reads the data keys of a CSV file
-def data_keys(daq_data):
-    keys = pd.read_json(daq_data, orient='split').keys().tolist()
-    keys.remove('time')
-    return keys
 
 # Function that gets the name and unit from the CSV key
 def key_elements(key):
@@ -123,7 +116,7 @@ def div_graph_daq():
                 ],
                 className='six columns'),
 
-                html.Div(id='div-current-daq-value',
+                html.Div(id='div-last-daq-value',
                          className='six columns')
             ],
                 className='row',
@@ -407,6 +400,8 @@ app.layout = html.Div([
 
         # Invisible div that stores the JSON-serialized dataframe of DAQ data
         dcc.Store(id='store-daq-data'),
+        dcc.Store(id='store-daq-keys'),
+        dcc.Store(id='store-daq-values'),
 
         # Html div that stores the DAQ graph and display parameters
         div_graph_daq(),
@@ -429,6 +424,7 @@ app.layout = html.Div([
 
 # Function that defines the Dash graph object
 def update_graph(daq_data,
+                 daq_keys,
                  display_mode,
                  checklist_display_options):
     """
@@ -438,13 +434,13 @@ def update_graph(daq_data,
     :return: dcc Graph object containing the updated figures
     """
     # Check that there is data, return empty graph otherwise
-    if not daq_data:
+    if not daq_data or not daq_keys:
         return dcc.Graph(id='graph-daq')
 
     # Import the data, get the keys, check that there is something to display
     daq_df = pd.read_json(daq_data, orient='split')
     keys = []
-    for key in data_keys(daq_data):
+    for key in daq_keys:
         if key in checklist_display_options:
             keys.append(key)
     n_keys = len(keys)
@@ -452,7 +448,7 @@ def update_graph(daq_data,
         return dcc.Graph(id='graph-daq')
 
     # Use time as the x axis
-    time = daq_df['time']
+    times = daq_df['time']
 
     # Initialize a trace for each quantity measured by the DAQ
     traces = []
@@ -460,8 +456,8 @@ def update_graph(daq_data,
         values = daq_df[key]
         name, unit = key_elements(key)
 
-        traces.append(go.Scatter(
-            x=time,
+        traces.append(go.Scattergl(
+            x=times,
             y=values,
             mode='lines',
             name=name
@@ -553,11 +549,8 @@ def daq_controller(nstart, nstop, pid, cfg_name, out_name):
         args = ['python3', 'daq.py', '--config', cfg_name, '--name', out_name]
         pid = subprocess.Popen(' '.join(args), preexec_fn=setsid, shell=True).pid
 
-        # Wait for the program to produce a new data file
-        time_out = 60
-        init_time = time.time()
-        while (len(listdir(dirs['dat'])) == n_files and
-               time.time()-init_time < time_out):
+        # Wait for the program to produce a new data file, as long as it is alive
+        while len(listdir(dirs['dat'])) == n_files:
             if not process_is_live(pid):
                 return '', False, True
             time.sleep(0.1)
@@ -567,9 +560,12 @@ def daq_controller(nstart, nstop, pid, cfg_name, out_name):
 
     # If there is one running, kill it
     else:
-        # Send a kill signal to the DAQ
+        # Send a kill signal to the DAQ, wait for it to die
         try:
             killpg(int(pid), signal.SIGTERM)
+            while process_is_live(pid):
+                time.sleep(0.1)
+            time.sleep(0.1)
         except:
             print('The DAQ process has already been terminated')
             pass
@@ -586,7 +582,7 @@ def daq_controller(nstart, nstop, pid, cfg_name, out_name):
 # when the DAQ is started or stopped (matched to DAQ status)
 @app.callback(Output('interval-update', 'interval'),
               [Input('store-process-id', 'data')])
-def daq_controller(pid):
+def refresh_interval(pid):
     if pid:
         return 2000             # ms, two seconds
     else:
@@ -681,38 +677,45 @@ def update_data_list(daq_disable):
 # App callback that reads the CSV data file
 # when the file selection dropdown is activatived
 # or the automatic reload is triggered
-@app.callback(Output('store-daq-data', 'data'),
+@app.callback([Output('store-daq-data', 'data'),
+               Output('store-daq-keys', 'data'),
+               Output('store-daq-values', 'data')],
               [Input('interval-update', 'n_intervals'),
                Input('dropdown-file-selection', 'value')])
 def update_data_file(_, daq_file):
     if daq_file:
         try:
             daq_df = pd.read_csv(daq_file)
-            daq_data = daq_df.to_json(orient='split')
-            return daq_data
+            daq_keys = daq_df.keys().to_list()
+            daq_values = {key:daq_df[key].iloc[-1] for key in daq_keys}
+            if 'time' not in daq_keys:
+                print('No time stamps in the data, must provide a \'time\' column')
+                return None, [], {}
+            daq_keys.remove('time')
+            daq_data = daq_df.to_json(orient='split', index=False)
+            return daq_data, daq_keys, daq_values
         except FileNotFoundError:
             print('File not found: {}'.format(daq_file))
         except pd.errors.EmptyDataError as error:
             pass
 
-    return None
+    return None, [], {}
 
 # App callback that updates the list of data keys
 # when the file changes, necessary as not all files
 # contain the same measurements
 @app.callback([Output('checklist-display-options-daq', 'options'),
                Output('checklist-display-options-daq', 'value')],
-              [Input('store-daq-data', 'data')],
+              [Input('store-daq-keys', 'data')],
               [State('checklist-display-options-daq', 'options'),
                State('checklist-display-options-daq', 'value')])
-def update_display_options(daq_data, disp_options, disp_values):
-    if daq_data:
-        keys = data_keys(daq_data)
-        options = [{'label': key_elements(key)[0], 'value': key} for key in keys]
+def update_display_options(daq_keys, disp_options, disp_values):
+    if daq_keys:
+        options = [{'label': key_elements(key)[0], 'value': key} for key in daq_keys]
         if options == disp_options:
             return disp_options, disp_values
 
-        return options, keys
+        return options, daq_keys
 
     return [], []
 
@@ -737,15 +740,18 @@ def update_log_file(_, __):
 # App callback that updates the graph
 # whenever the page is refreshed (inherits from store-daq-data)
 @app.callback(Output('div-graph-daq', 'children'),
-              [Input('store-daq-data', 'data'),
-               Input('radio-display-mode-daq', 'value'),
-               Input('checklist-display-options-daq', 'value')])
-def update_div_graph(daq_data,
-                     display_mode,
-                     checklist_display_options):
+              [Input('radio-display-mode-daq', 'value'),
+               Input('checklist-display-options-daq', 'value')],
+              [State('store-daq-data', 'data'),
+               State('store-daq-keys', 'data')])
+def update_div_graph(display_mode,
+                     checklist_display_options,
+                     daq_data,
+                     daq_keys):
 
     # Update the graph div
     graph = update_graph(daq_data,
+                         daq_keys,
                          display_mode,
                          checklist_display_options)
 
@@ -754,13 +760,12 @@ def update_div_graph(daq_data,
 # App callback that prints the elapsed time
 # whenever the page is refreshed (inherits from store-daq-data)
 @app.callback(Output('div-time-display', 'children'),
-              [Input('store-daq-data', 'data')])
-def update_div_time_display(daq_data):
+              [Input('store-daq-values', 'data')])
+def update_div_time_display(daq_values):
     # If the DAQ is running, get the elapsed time
     time = 0
-    if daq_data:
-        daq_df = pd.read_json(daq_data, orient='split')
-        time = int(daq_df['time'].iloc[-1]-daq_df['time'].iloc[0])
+    if daq_values:
+        time = int(daq_values['time'])
 
     time_delta = str(datetime.timedelta(seconds=time))
     return html.H6(f"Time elapsed: {time_delta}",
@@ -769,19 +774,19 @@ def update_div_time_display(daq_data):
 
 # App callback that prints the current values of the measurements
 # whenever the page is refreshed (inherits from store-daq-data)
-@app.callback(Output('div-current-daq-value', 'children'),
-              [Input('store-daq-data', 'data')])
-def update_div_current_daq_value(daq_data):
-    div = [html.H6("Current values",
+@app.callback(Output('div-last-daq-value', 'children'),
+              [Input('store-daq-values', 'data')])
+def update_div_last_daq_value(daq_values):
+    div = [html.H6("Last values",
                      style={'font-weight': 'bold',
                             'margin-bottom': '0px'}
                     )]
-    if daq_data:
-        daq_df = pd.read_json(daq_data, orient='split')
+    if daq_values:
         values = []
-        for key in data_keys(daq_data):
+        for key, value in daq_values.items():
+            if key == 'time': continue
             name, unit = key_elements(key)
-            val = daq_df[key].iloc[-1]
+            val = daq_values[key]
             values.append(html.Div(f"{val:.4f} {unit}",
                 style={'marginLeft': '5px', 'font-weight':'bold'}))
         div += values

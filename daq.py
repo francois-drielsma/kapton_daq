@@ -4,7 +4,6 @@ import signal
 import datetime
 import yaml
 import argparse
-import traceback
 import instruments as ik
 import quantities as pq
 from collections import namedtuple
