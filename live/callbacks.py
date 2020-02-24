@@ -37,7 +37,7 @@ def register_callbacks(app):
             n_files = len(os.listdir(os.environ['DAQ_DATDIR']))
 
             # Start the DAQ process
-            args = ['python3', 'daq.py', '--config', cfg_name, '--name', out_name]
+            args = ['python3', os.environ['DAQ_BASEDIR']+'/daq.py', '--config', cfg_name, '--name', out_name]
             pid = subprocess.Popen(' '.join(args), preexec_fn=os.setsid, shell=True).pid
 
             # Wait for the program to produce a new data file, as long as it is alive

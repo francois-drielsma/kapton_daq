@@ -1,7 +1,7 @@
 import os
 import dash
 
-# Check that the environment has been set up
+# Check that the DAQ environment has been set
 if 'DAQ_BASEDIR' not in os.environ:
     raise KeyError('DAQ environment not set up, please source setup.sh')
 

@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import os
 import time
 import signal
 import datetime
@@ -18,6 +19,10 @@ class DAQ:
         """
         Initialize shared variables.
         """
+        # Check that the DAQ environment has been set
+        if 'DAQ_BASEDIR' not in os.environ:
+            raise KeyError('DAQ environment not set up, please source setup.sh')
+
         # Global parameters
         self._time = 0.         # Data acquisition time
         self._rate = 0.         # Minimum time between acquisitions
@@ -87,7 +92,8 @@ class DAQ:
         args = parser.parse_args()
 
         # Load the configuration
-        self._cfg_name = 'config/config_default.yaml' if not args.config else args.config
+        cfg_dir = os.environ['DAQ_CFGDIR']
+        self._cfg_name = cfg_dir+'/config_default.yaml' if not args.config else args.config
         with open(self._cfg_name, 'r') as cfg_file:
             self._cfg = yaml.safe_load(cfg_file)
 
@@ -101,7 +107,8 @@ class DAQ:
         Initialize a Logger object.
         """
         date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-        log_name = 'log/{}_{}.log'.format(date_str, self._output_name)
+        log_dir = os.environ['DAQ_LOGDIR']
+        log_name = log_dir+'/{}_{}.log'.format(date_str, self._output_name)
         print("Created new DAQ log under {}".format(log_name))
         self._logger = Logger(log_name)
         self.log("Setting up DAQ with configuration {}".format(self._cfg_name))
@@ -173,7 +180,8 @@ class DAQ:
         Initialize output file.
         """
         date_str = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-        output_name = 'data/{}_{}.csv'.format(date_str, self._output_name)
+        data_dir = os.environ['DAQ_DATDIR']
+        output_name = data_dir+'/{}_{}.csv'.format(date_str, self._output_name)
         open(output_name, 'w').close()
         self._output = CSVData(output_name)
         self.log("Created DAQ output file {}".format(output_name))
