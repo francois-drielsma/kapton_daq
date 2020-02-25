@@ -4,6 +4,7 @@ import yaml
 import signal
 import subprocess
 import datetime
+import numpy as np
 import pandas as pd
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
@@ -147,7 +148,10 @@ def register_callbacks(app):
 
     @app.callback([Output('dropdown-device-selection', 'options'),
                    Output('dropdown-device-selection', 'disabled'),
-                   Output('input-device-value', 'disabled'),
+                   Output('input-device-first', 'disabled'),
+                   Output('input-device-last', 'disabled'),
+                   Output('input-device-step', 'disabled'),
+                   Output('input-device-time', 'disabled'),
                    Output('button-device-set', 'disabled')],
                   [Input('button-stop-daq', 'disabled')])
     def enable_device_controls(daq_disable):
@@ -163,29 +167,37 @@ def register_callbacks(app):
             dev_options = [{'label':f.split('/')[-1], 'value':f} for f in dev_files]
 
         # Set the device controls
-        return dev_options, daq_disable, daq_disable, daq_disable
+        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
 
 
     @app.callback(Output('button-device-set', 'label'),
                   [Input('button-device-set', 'n_clicks')],
                   [State('dropdown-device-selection', 'value'),
-                   State('input-device-value', 'value')])
-    def set_device(nclicks, device_name, device_value):
+                   State('input-device-first', 'value'),
+                   State('input-device-last', 'value'),
+                   State('input-device-step', 'value'),
+                   State('input-device-time', 'value')])
+    def set_device(nclicks, device_name, device_first, device_last, device_step, device_time):
         '''
         App callback that sets the value of the selected device
-        according to the value displayed in the input box
+        according to the value displayed in the input boxes
         '''
         # If the necessary arguments are not set, skip
         if nclicks is None or not device_name:
             return ''
 
-        # Check that the value provided is a float, write to file
-        try:
-            float(device_value)
+        # If the device step is set to 0, set the device to first value
+        # Otherwise loop through all the values
+        if device_step == 0:
             with open(device_name, 'a+') as device_file:
-                device_file.write('\n'+device_value)
-        except ValueError:
-            pass
+                device_file.write('\n{:.10f}'.format(device_first))
+        else:
+            value_scan = np.arange(device_first, device_last, device_step)
+            for i, value in enumerate(value_scan):
+                with open(device_name, 'a+') as device_file:
+                    device_file.write('\n{:.10f}'.format(value))
+                if i < len(value_scan)-1:
+                    time.sleep(device_time)
 
         return ''
 
@@ -251,7 +263,7 @@ def register_callbacks(app):
         contain the same measurements
         '''
         if daq_keys:
-            options = [{'label': key_elements(key)[0], 'value': key} for key in daq_keys]
+            options = [{'label': ' '+key_elements(key)[0], 'value': key} for key in daq_keys]
             if options == disp_options:
                 return disp_options, disp_values
 
@@ -324,12 +336,12 @@ def register_callbacks(app):
 
     @app.callback(Output('div-last-daq-value', 'children'),
                   [Input('store-daq-values', 'data')])
-    def update_div_last_daq_value(daq_values):
+    def update_div_last_daq_readings(daq_values):
         '''
         App callback that prints the current values of the measurements
         whenever the page is refreshed (inherits from store-daq-data)
         '''
-        div = [html.H6("Last values",
+        div = [html.H6("Last readings",
                          style={'font-weight': 'bold',
                                 'margin-bottom': '0px'}
                         )]
@@ -340,7 +352,7 @@ def register_callbacks(app):
                 name, unit = key_elements(key)
                 val = daq_values[key]
                 values.append(html.Div(f"{val:.4f} {unit}",
-                    style={'marginLeft': '5px', 'font-weight':'bold'}))
+                    style={'margin-left': '5px', 'font-weight':'bold'}))
             div += values
 
         return div

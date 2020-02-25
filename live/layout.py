@@ -1,4 +1,5 @@
 import os
+import sys
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
@@ -13,8 +14,10 @@ def div_graph_daq():
         # Graph division
         html.Div(
             id='div-graph-daq',
-            className='nine columns'
+            className='nine columns',
+            style={'margin-left': '10px'}
         ),
+
         # List of options for the graph display
         html.Div([
             # Dropdown to choose the file from which to extract the data
@@ -34,8 +37,8 @@ def div_graph_daq():
             # Choice of graph display type (overlapped or separated)
             html.Div([
                 html.H6("Display mode", style={'font-weight': 'bold',
-                                               'marginBottom': '0px',
-                                               'marginTop': '10px'}),
+                                               'margin-bottom': '0px',
+                                               'margin-top': '10px'}),
 
                 dcc.RadioItems(
                     options=[
@@ -45,21 +48,21 @@ def div_graph_daq():
                     ],
                     value='overlap',
                     id='radio-display-mode-daq',
-                    style={'marginLeft': '5px'}
+                    style={'margin-left': '5px'}
                 )
             ]),
 
-            # Checklist of the measurements to plot and their current values
+            # Checklist of the measurements to plot and their last readings
             html.Div([
                 html.Div([
                     html.H6("Display selection", style={'font-weight': 'bold',
-                                                        'marginBottom': '0px'}),
+                                                        'margin-bottom': '0px'}),
 
                     dcc.Checklist(
                         options = [],
                         value = [],
                         id='checklist-display-options-daq',
-                        style={'marginLeft': '5px'}
+                        style={'margin-left': '5px'}
                     )
                 ],
                 className='six columns'),
@@ -80,7 +83,7 @@ def div_graph_daq():
         style={
             "border-radius": "5px",
             "border-width": "5px",
-            "border": "1px solid rgb(216, 216, 216)",
+            "border": "2px solid rgb(216, 216, 216)",
             "position": "relative",
             "height": "480px"
         }
@@ -97,11 +100,11 @@ def div_daq_controls():
     return html.Div([
 
         # Title
-        html.H4('DAQ Controls', style={"textAlign": "center"}),
+        html.H4('DAQ Controls', style={"text-align": "center"}),
 
         # Start and stop button
         html.Div([
-            # Buttons that start the DAQ
+            # Button that starts the DAQ
             daq.StopButton(
                 id='button-start-daq',
                 children='Start',
@@ -114,7 +117,7 @@ def div_daq_controls():
                 }
             ),
 
-            # Buttons that stop the DAQ
+            # Button that stops the DAQ
             daq.StopButton(
                 id='button-stop-daq',
                 children='Stop',
@@ -128,7 +131,9 @@ def div_daq_controls():
             ),
         ]),
 
+        # Div with the config selection
         html.Div([
+            # Input box to specify the name of the DAQ file
             dcc.Input(
                 id='input-output-name',
                 type='text',
@@ -139,12 +144,12 @@ def div_daq_controls():
                     "justify-content": "center",
                     "align-items": "center",
                     "width": "80%",
-                    'marginTop': '80px',
-                    'marginLeft': "10%"
+                    'margin-top': '80px',
+                    'margin-left': "10%"
                 }
             ),
 
-            # DAQ config file input block
+            # DAQ config file dropdown selector
             dcc.Dropdown(
                 id='dropdown-config-selection',
                 options=config_options,
@@ -157,8 +162,8 @@ def div_daq_controls():
                     "display": "flex",
                     "justify-content": "center",
                     "width": "90%",
-                    'marginTop': '5px',
-                    'marginLeft': "5%"
+                    'margin-top': '5px',
+                    'margin-left': "5%"
                 }
             ),
 
@@ -170,8 +175,8 @@ def div_daq_controls():
                 style={
                     "width": "80%",
                     "height": "157px",
-                    "marginLeft": "10%",
-                    "marginTop": "10px",
+                    "margin-left": "10%",
+                    "margin-top": "10px",
                 },
                 disabled=True
             ),
@@ -184,10 +189,11 @@ def div_daq_controls():
         style={
             "border-radius": "5px",
             "border-width": "5px",
-            "border": "1px solid rgb(216, 216, 216)",
+            "border": "2px solid rgb(216, 216, 216)",
             "position": "relative",
             "height": "400px",
-            "marginTop": "10px"
+            "margin-top": "10px",
+            "margin-left": "0px"
         }
     )
 
@@ -201,10 +207,9 @@ def div_device_controls():
         # Title
         html.H4('Device Controls', style={"textAlign": "center"}),
 
-        # Div with the file selection and refresh rate
+        # Div with the device selection
         html.Div([
-
-            # DAQ device devices setter
+            # DAQ device dropdown selector
             dcc.Dropdown(
                 id='dropdown-device-selection',
                 options=[],
@@ -216,41 +221,108 @@ def div_device_controls():
                     "display": "flex",
                     "justify-content": "center",
                     "width": "90%",
-                    'marginTop': '15px',
-                    'marginLeft': "5%"
+                    'margin-top': '10px',
+                    'margin-left': "5%"
                 }
             ),
 
+            # Div with the value input and the setter button
             html.Div([
-                # Buttons that start the DAQ
-                dcc.Input(
-                    id='input-device-value',
-                    placeholder='Enter a value...',
-                    type='text',
-                    value='',
-                    className='one column',
+                # Input box with the value to set the device to
+                daq.NumericInput(
+                    id='input-device-first',
+                    value=0,
+                    min=sys.float_info.min,
+                    max=sys.float_info.max,
+                    size=80,
+                    label='Value',
+                    labelPosition='top',
+                    className='six columns',
                     disabled=True,
                     style={
                         "display": "flex",
                         "justify-content": "center",
                         "align-items": "center",
-                        "width": "52%",
-                        'marginTop': '10px',
-                        'marginLeft': "10%"
+                        "width": "25%",
+                        "margin-top": "10px",
+                        "margin-left": "10%"
                     }
                 ),
 
-                # Buttons that stop the DAQ
+                # Button that sets the device to the value in the input box
                 daq.StopButton(
                     id='button-device-set',
                     children='Set',
-                    className='one column',
+                    className='six columns',
                     disabled=True,
                     style={
-                        'marginTop': '10px',
                         "display": "flex",
                         "justify-content": "center",
-                        "width": "29%"
+                        "width": "50%",
+                        "margin-top": "40px"
+                    }
+                )
+            ]),
+
+            html.Div([
+                # Input box with the last value to set the device to
+                daq.NumericInput(
+                    id='input-device-last',
+                    value=0,
+                    min=sys.float_info.min,
+                    max=sys.float_info.max,
+                    size=80,
+                    label='Last',
+                    labelPosition='top',
+                    className='four columns',
+                    disabled=True,
+                    style={
+                        "display": "flex",
+                        "justify-content": "center",
+                        "align-items": "center",
+                        "width": "25%",
+                        "margin-top": "10px",
+                        "margin-left": "10%"
+                    }
+                ),
+
+                # Input box with the step between each value to set
+                daq.NumericInput(
+                    id='input-device-step',
+                    value=0,
+                    min=0,
+                    max=sys.float_info.max,
+                    size=80,
+                    label='Step',
+                    labelPosition='top',
+                    className='four columns',
+                    disabled=True,
+                    style={
+                        "display": "flex",
+                        "justify-content": "center",
+                        "align-items": "center",
+                        "width": "25%",
+                        "margin-top": "10px"
+                    }
+                ),
+
+                # Input box with the time to wait between each value to set
+                daq.NumericInput(
+                    id='input-device-time',
+                    value=30,
+                    min=1,
+                    max=3600,
+                    size=80,
+                    label='Time',
+                    labelPosition='top',
+                    className='four columns',
+                    disabled=True,
+                    style={
+                        "display": "flex",
+                        "justify-content": "center",
+                        "align-items": "center",
+                        "width": "25%",
+                        "margin-top": "10px"
                     }
                 )
             ])
@@ -264,10 +336,10 @@ def div_device_controls():
         style={
             "border-radius": "5px",
             "border-width": "5px",
-            "border": "1px solid rgb(216, 216, 216)",
+            "border": "2px solid rgb(216, 216, 216)",
             "position": "relative",
             "height": "400px",
-            "marginTop": "10px"
+            "margin-top": "10px"
         }
     )
 
@@ -281,9 +353,9 @@ def div_daq_log():
         # Title
         html.H4('Last DAQ Log', style={"textAlign": "center"}),
 
-        # Start and stop button
+        # Div to display the DAQ output log
         html.Div([
-            # Box that display the config file
+            # Box that display the DAQ log
             dcc.Textarea(
                 id="text-log",
                 placeholder=" ",
@@ -300,21 +372,20 @@ def div_daq_log():
             )
         ]),
 
-        # Invisible div that stores the path to the file
+        # Invisible div that stores the path to the log file
         dcc.Store(
             id='store-log-path'
         )
     ],
-        #className="six columns",
+        className="six columns",
         style={
-            "width": "49%",
-            "marginLeft": "50.7%",
             "border-radius": "5px",
             "border-width": "5px",
-            "border": "1px solid rgb(216, 216, 216)",
+            "border": "2px solid rgb(216, 216, 216)",
             "position": "relative",
             "height": "400px",
-            "marginTop": "10px"
+            "margin-top": "10px",
+            "margin-right": "0px"
         }
     )
 
