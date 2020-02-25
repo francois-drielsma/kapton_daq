@@ -29,7 +29,7 @@ def register_callbacks(app):
         '''
         # If no DAQ process is running, start one
         if not pid:
-            # Check that there isn't alredy a running processes
+            # Check that there isn't already a running processes
             pids = find_daq_process()
             if len(pids):
                 return str(pids[-1]), True, False

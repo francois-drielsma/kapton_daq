@@ -238,9 +238,6 @@ class DAQ:
         """
         Main DAQ function.
         """
-        # Initialize the output file
-        self.initialize_output()
-
         # Give some context
         self.log("Starting DAQ...")
         self.log("DAQ sampling time: "+(str(self._time)+' s' if self._time else 'Unconstrained'))
@@ -251,6 +248,14 @@ class DAQ:
         ite_count, perc_count, min_count = 0, 0, 0
         killer = self.Killer()
         while (not self._time or (curr_time - init_time) < self._time) and not killer.kill_now:
+            # Initialize the output file. If the file contains more
+            # than a certain number of lines, create a new one
+            max_count = int(1e5)
+            if not ite_count%max_count:
+                if self._output:
+                    self._output.close()
+                self.initialize_output()
+
             # Acquire measurements, break if None
             readings = self.acquire()
             if not readings:
