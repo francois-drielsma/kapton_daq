@@ -27,12 +27,13 @@ def register_callbacks(app):
         disables the start button and enables the stop button,
         initializes the auto-refresh interval
         '''
-        # If first initialization or stop button pressed, enable the start button
-        if nstart is None:
-            return '', False, True
-
         # If no DAQ process is running, start one
         if not pid:
+            # Check that there isn't alredy a running processes
+            pids = find_daq_process()
+            if len(pids):
+                return str(pids[-1]), True, False
+
             # Count the amount of files currently in the data directory
             n_files = len(os.listdir(os.environ['DAQ_DATDIR']))
 
@@ -71,24 +72,21 @@ def register_callbacks(app):
             return '', False, True
 
 
-    @app.callback(Output('interval-update', 'interval'),
+    @app.callback(Output('interval-update', 'disabled'),
                   [Input('store-process-id', 'data')])
     def refresh_interval(pid):
         '''
-        App callback that initializes the auto-refresh interval
-        when the DAQ is started or stopped (matched to DAQ status)
+        App callback that enables the auto-refresh interval
+        when a DAQ process is alive
         '''
-        if pid:
-            return 2000             # ms, two seconds
-        else:
-            return 24*60*60*1000    # ms, one day
+        return not bool(pid)
 
 
     @app.callback(Output('button-stop-daq', 'n_clicks'),
                   [Input('interval-update', 'n_intervals')],
                   [State('store-process-id', 'data'),
                    State('button-stop-daq', 'n_clicks')])
-    def check_daq_process(_, pid, nstop):
+    def check_daq_status(_, pid, nstop):
         '''
         App callback that automatically presses the stop
         button if the DAQ process has died
@@ -97,6 +95,27 @@ def register_callbacks(app):
             return nstop + 1 if nstop else 1
         else:
             raise PreventUpdate
+
+
+    @app.callback(Output('button-start-daq', 'n_clicks'),
+                  [Input('interval-update', 'n_intervals')],
+                  [State('store-process-id', 'data'),
+                   State('button-start-daq', 'n_clicks')])
+    def update_daq_process(_, pid, nstart):
+        '''
+        App callback that looks for an already existing
+        process running daq.py, raises if multiple are found
+        '''
+        if not pid:
+            pids = find_daq_process()
+            if len(pids) == 1:
+                print('DAQ process already running, disabling Start button')
+                return nstart+1 if nstart else 1
+            elif len(pids) > 1:
+                print('Two or more running DAQ processes running, will display the most recent')
+                return nstart+1 if nstart else 1
+
+        raise PreventUpdate
 
 
     @app.callback([Output('dropdown-config-selection', 'disabled'),
@@ -174,7 +193,7 @@ def register_callbacks(app):
     @app.callback([Output('dropdown-file-selection', 'options'),
                    Output('dropdown-file-selection', 'value')],
                   [Input('store-process-id', 'data')])
-    def update_data_list(daq_disable):
+    def update_data_list(_):
         '''
         App callback that updates the list of available
         data files when the DAQ has created a log file
@@ -293,11 +312,11 @@ def register_callbacks(app):
         whenever the page is refreshed (inherits from store-daq-data)
         '''
         # If the DAQ is running, get the elapsed time
-        time = 0
+        elapsed_time = 0
         if daq_values:
-            time = int(daq_values['time'])
+            elapsed_time = int(daq_values['time'])
 
-        time_delta = str(datetime.timedelta(seconds=time))
+        time_delta = str(datetime.timedelta(seconds=elapsed_time))
         return html.H6(f"Time elapsed: {time_delta}",
                        style={'font-weight': 'bold',
                               'margin-top': '3px'})

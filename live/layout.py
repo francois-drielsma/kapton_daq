@@ -20,9 +20,8 @@ def div_graph_daq():
             # Dropdown to choose the file from which to extract the data
             dcc.Dropdown(
                 id='dropdown-file-selection',
-                options=[],
                 clearable=False,
-                searchable=False,
+                searchable=True,
                 style={'margin-top': '10px'}
             ),
 
@@ -178,10 +177,7 @@ def div_daq_controls():
             ),
 
             # Invisible div that stores the DAQ process ID
-            dcc.Store(
-                id='store-process-id',
-                data=''
-            )
+            dcc.Store(id='store-process-id')
         ])
     ],
         className="four columns",
@@ -238,7 +234,7 @@ def div_device_controls():
                         "display": "flex",
                         "justify-content": "center",
                         "align-items": "center",
-                        "width": "55%",
+                        "width": "52%",
                         'marginTop': '10px',
                         'marginLeft': "10%"
                     }
@@ -351,6 +347,7 @@ layout = html.Div([
         # Element that allows you to update components on a predefined interval
         dcc.Interval(
             id="interval-update",
+            interval=2 * 1000,
             n_intervals=0
         ),
 

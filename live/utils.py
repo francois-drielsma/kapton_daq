@@ -13,6 +13,24 @@ def key_elements(key):
     return name, unit
 
 
+def find_daq_process():
+    '''
+    Function that finds existing DAQ processes
+    '''
+    pids = []
+    for proc in psutil.process_iter():
+        if proc.name() == 'python3':
+            proc_dict = proc.as_dict(['ppid', 'cmdline'])
+            pid = None
+            for string in proc_dict['cmdline']:
+                if 'daq.py' in string:
+                    pid = proc_dict['ppid']
+                    break
+            if pid:
+                pids.append(pid)
+
+    return pids
+
 def process_is_live(pid):
     '''
     Function that checks if a process is live
