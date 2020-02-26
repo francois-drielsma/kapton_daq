@@ -13,6 +13,7 @@ instruments:
         baud: 9600
     measurements:
       voltage:
+        control: True
         quantity: voltage
         unit: volt
         name: PSU Voltage

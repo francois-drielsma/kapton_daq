@@ -13,6 +13,7 @@ instruments:
         baud: 9600
     measurements:
       voltage:
+        control: True
         quantity: voltage
         unit: volt
         name: PSU Voltage
@@ -22,6 +23,7 @@ instruments:
         unit: volt
         name: PSU Sense Voltage
       current:
+        control: True
         quantity: current
         unit: amp
         name: PSU Current

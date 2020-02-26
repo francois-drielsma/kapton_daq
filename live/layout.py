@@ -217,6 +217,25 @@ def div_device_controls():
                 clearable=False,
                 searchable=False,
                 disabled=True,
+                placeholder='Select a device',
+                style={
+                    "display": "flex",
+                    "justify-content": "center",
+                    "width": "90%",
+                    'margin-top': '10px',
+                    'margin-left': "5%"
+                }
+            ),
+
+            # DAQ device dropdown selector
+            dcc.Dropdown(
+                id='dropdown-meas-selection',
+                options=[],
+                className='twelve columns',
+                clearable=False,
+                searchable=False,
+                disabled=True,
+                placeholder='Select a measurement',
                 style={
                     "display": "flex",
                     "justify-content": "center",
@@ -232,7 +251,7 @@ def div_device_controls():
                 daq.NumericInput(
                     id='input-device-first',
                     value=0,
-                    min=sys.float_info.min,
+                    min=-sys.float_info.max,
                     max=sys.float_info.max,
                     size=80,
                     label='Value',
@@ -269,7 +288,7 @@ def div_device_controls():
                 daq.NumericInput(
                     id='input-device-last',
                     value=0,
-                    min=sys.float_info.min,
+                    min=-sys.float_info.max,
                     max=sys.float_info.max,
                     size=80,
                     label='Last',
@@ -400,8 +419,8 @@ layout = html.Div([
         html.Img(
             src="https://www6.slac.stanford.edu/sites/www6.slac.stanford.edu/files/SLAC_Logo_W.png",
             style={
-                'height' : '80%',
-                'padding-top' : 8
+                'height': '80%',
+                'padding-top': 8
             },
         )
     ],

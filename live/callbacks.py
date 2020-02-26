@@ -148,6 +148,7 @@ def register_callbacks(app):
 
     @app.callback([Output('dropdown-device-selection', 'options'),
                    Output('dropdown-device-selection', 'disabled'),
+                   Output('dropdown-meas-selection', 'disabled'),
                    Output('input-device-first', 'disabled'),
                    Output('input-device-last', 'disabled'),
                    Output('input-device-step', 'disabled'),
@@ -167,35 +168,54 @@ def register_callbacks(app):
             dev_options = [{'label':f.split('/')[-1], 'value':f} for f in dev_files]
 
         # Set the device controls
-        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
+        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
+
+
+    @app.callback(Output('dropdown-meas-selection', 'options'),
+                  [Input('dropdown-device-selection', 'value')])
+    def update_device_measurements(device_name):
+        '''
+        App callback that gets the list of keys from the
+        virtual device file
+        '''
+        # Update the list of device devices
+        meas_options = []
+        if device_name:
+            meas_keys = pd.read_csv(device_name).keys()
+            meas_options = [{'label':k, 'value':k} for k in meas_keys]
+
+        return meas_options
 
 
     @app.callback(Output('button-device-set', 'label'),
                   [Input('button-device-set', 'n_clicks')],
                   [State('dropdown-device-selection', 'value'),
+                   State('dropdown-meas-selection', 'value'),
                    State('input-device-first', 'value'),
                    State('input-device-last', 'value'),
                    State('input-device-step', 'value'),
                    State('input-device-time', 'value')])
-    def set_device(nclicks, device_name, device_first, device_last, device_step, device_time):
+    def set_device(nclicks, device_name, meas_name, device_first, device_last, device_step, device_time):
         '''
         App callback that sets the value of the selected device
         according to the value displayed in the input boxes
         '''
         # If the necessary arguments are not set, skip
-        if nclicks is None or not device_name:
+        if nclicks is None or not device_name or not meas_name:
             return ''
 
         # If the device step is set to 0, set the device to first value
         # Otherwise loop through all the values
         if device_step == 0:
-            with open(device_name, 'a+') as device_file:
-                device_file.write('\n{:.10f}'.format(device_first))
+            device = pd.read_csv(device_name)
+            device[meas_name].iloc[-1] = device_first
+            device.to_csv(device_name, index=False)
         else:
             value_scan = np.arange(device_first, device_last, device_step)
+            device = pd.read_csv(device_name)
             for i, value in enumerate(value_scan):
-                with open(device_name, 'a+') as device_file:
-                    device_file.write('\n{:.10f}'.format(value))
+                device[meas_name].iloc[-1] = value
+                device.to_csv(device_name, index=False)
                 if i < len(value_scan)-1:
                     time.sleep(device_time)
 

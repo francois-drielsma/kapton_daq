@@ -24,24 +24,25 @@ class DAQ:
             raise KeyError('DAQ environment not set up, please source setup.sh')
 
         # Global parameters
-        self._time = 0.         # Data acquisition time
-        self._rate = 0.         # Minimum time between acquisitions
-        self._max_fails = 16    # Maximum allowed number of failed reads
-        self._output_name = ''  # Output file name
-        self._output = None     # Output file
+        self._time        = 0.   # Data acquisition time
+        self._rate        = 0.   # Minimum time between acquisitions
+        self._max_fails   = 16   # Maximum allowed number of failed reads
+        self._output_name = ''   # Output file name
+        self._output      = None # Output file
 
         # Parse configuration
-        self._cfg_name = ''     # Configuration file name
-        self._cfg = None        # Configuration dictionary
+        self._cfg_name   = ''    # Configuration file name
+        self._cfg        = None  # Configuration dictionary
         self.parse_config()
 
         # Initialize logger
-        self._logger = None     # Logger
+        self._logger     = None  # Logger
         self.initialize_logger()
 
         # Initialize probes
-        self._probes = []       # Instrument probes
-        self._data_keys = []    # List of measurement keys
+        self._probes     = []   # Instrument probes
+        self._controls   = []   # Instrument controls
+        self._data_keys  = []   # List of measurement keys
         self.initialize_probes()
 
     # INNER CLASSES #
@@ -119,19 +120,28 @@ class DAQ:
         """
         inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
         Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
+        Control = namedtuple('Probe', 'inst, meas, control, vinst, vmeas, vprobe')
         self._data_keys = ['time']
         self._probes = []
+        self._controls = []
         for k, i in self._cfg['instruments'].items():
             # Set up the instrument
             self.log("Setting up instrument {} of type {}".format(k, i['type']))
             inst = None
             if i['type'] == 'virtual':
-                inst = VirtualDevice(k)
+                inst = VirtualDevice(k, i['measurements'].keys())
             elif i['type'] in inst_types:
                 try:
                     inst = getattr(getattr(ik, i['make']), i['model'])
                 except AttributeError:
                     raise ValueError('Instrument {} not found in InstrumentKit'.format(i['model']))
+                if i['type'] == power_supply:
+                    control_keys = []
+                    for k, m in i['measurements'].items():
+                        if 'control' in m and m['control']:
+                            control_keys.append(k)
+                    if control_keys:
+                        vinst = VirtualDevice(k, control_keys)
             else:
                 raise ValueError('Instrument type not supported: {}'.format(i['type']))
 
@@ -144,8 +154,8 @@ class DAQ:
                     raise ValueError('Protocol not supported: {}'.format(i['comm']['type']))
 
             # Initalize a probe for each measurement
-            for m in i['measurements'].values():
-                self.log("Setting up {} measurement of name {}".format(m['quantity'], m['name']))
+            for k, m in i['measurements'].items():
+                self.log("Setting up {} measurement of name {}".format(k, m['name']))
                 unit = getattr(pq, m['unit'])
                 meas, probe = None, None
                 if i['type'] == 'instrument':
@@ -153,20 +163,28 @@ class DAQ:
                 elif i['type'] == 'multimeter':
                     meas = getattr(inst.Mode, m['quantity'])
                     probe = lambda inst, meas: inst.measure(meas)
-                else:
-                    if i['type'] == 'power_supply':
-                        if 'channel' in m:
-                            inst = inst.channel[m['channel']]
-                        time.sleep(1)
-                        inst.output = True
-
-                    meas = inst.__class__.__dict__[m['quantity']]
+                elif i['type'] == 'virtual':
+                    meas = k
+                    probe = lambda inst, meas: inst.getter(meas)
                     if 'value' in m:
-                        self.log("Setting {} to {} {}".format(m['name'], m['value'],unit.u_symbol))
+                        inst.setter(meas, m['value'])
+                elif i['type'] == 'power_supply':
+                    if 'channel' in m:
+                        inst = inst.channel[m['channel']]
+                        time.sleep(1)
+                    inst.output = True
+                    meas = inst.__class__.__dict__[m['quantity']]
+                    probe = lambda inst, meas: meas.fget(inst)
+                    if 'value' in m:
+                        self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
                         meas.fset(inst, m['value'])
                         time.sleep(0.1)
-
-                    probe = lambda inst, meas: meas.fget(inst)
+                    if 'control' in m and m['control']:
+                        self.log('Setting up controller for {}'.format(m['name']))
+                        vmeas = k
+                        probe = lambda vinst, vmeas: vinst.getter(vmeas)
+                        control = lambda inst, meas, value: meas.fset(inst, value)
+                        self._controls.append(Control(inst, meas, control, vinst, vmeas, probe))
 
                 # Append the list of data keys
                 self._data_keys.append('{} [{}]'.format(m['name'], unit.u_symbol))
@@ -192,6 +210,25 @@ class DAQ:
         Logs a message to the standard output location.
         """
         self._logger.log(message, severity)
+
+    def log_progress(self, delta_t, ite_count, perc_count, min_count):
+        """
+        Log the DAQ progress
+        """
+        if self._time and int(10*delta_t/self._time) > perc_count:
+            ratio = 100*delta_t/self._time
+            perc_count = int(ratio/10)
+            elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
+            message = "DAQ running for {} ({:0.0f}%, {} measurements)".\
+                    format(elapsed_time, min(ratio, 100), ite_count)
+            self.log(message)
+        elif not self._time and int(delta_t/300) > min_count/5:
+            min_count = int(delta_t/60)
+            elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
+            message = "DAQ running for {} ({} measurements)".format(elapsed_time, ite_count)
+            self.log(message)
+
+        return perc_count, min_count
 
     def read(self, probe):
         """
@@ -275,19 +312,10 @@ class DAQ:
             time.sleep(self._rate)
 
             # Update, log the progress
+            perc_count, min_count = self.log_progress(delta_t, ite_count, perc_count, min_count)
+
+            # Increment iteration count
             ite_count += 1
-            if self._time and int(10*delta_t/self._time) > perc_count:
-                ratio = 100*delta_t/self._time
-                perc_count = int(ratio/10)
-                elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
-                message = "DAQ running for {} ({:0.0f}%, {} measurements)".\
-                        format(elapsed_time, min(ratio, 100), ite_count)
-                self.log(message)
-            elif not self._time and int(delta_t/300) > min_count/5:
-                min_count = int(delta_t/60)
-                elapsed_time = str(datetime.timedelta(seconds=int(delta_t)))
-                message = "DAQ running for {} ({} measurements)".format(elapsed_time, ite_count)
-                self.log(message)
 
         # Close the output file
         self.log("...DONE!")

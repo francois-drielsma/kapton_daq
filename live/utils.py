@@ -31,6 +31,7 @@ def find_daq_process():
 
     return pids
 
+
 def process_is_live(pid):
     '''
     Function that checks if a process is live
