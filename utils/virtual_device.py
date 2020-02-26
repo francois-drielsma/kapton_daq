@@ -32,6 +32,24 @@ class VirtualDevice(object):
             val_string += '\n'
             file.write(val_string.format(*self._meas_vals.values()))
 
+    def getter_update(self, name):
+        """
+        Fetches a measurement, updates the last value
+        stored and returns the update status
+        """
+        # Assert the requested key is available
+        if name not in self._meas_vals.keys():
+            raise KeyError('The VirtualDevice does not contain a value for {}'.format(name))
+
+        # Open the file, get the last entry in the relevant key
+        df = pd.read_csv(self._dev_file)
+        value = float(df[name].iloc[-1])
+        updated = False
+        if value != self._meas_vals[name]:
+            self._meas_vals[name] = value
+            updated = True
+        return value, updated
+
     def getter(self, name):
         """
         Fetches a measurement

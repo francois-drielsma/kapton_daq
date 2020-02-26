@@ -6,6 +6,7 @@ instruments:
     type: power_supply
     make: glassman
     model: GlassmanFR
+    controls: ['voltage', 'current']
     comm:
       type: serial
       args:
@@ -13,7 +14,6 @@ instruments:
         baud: 9600
     measurements:
       voltage:
-        control: True
         quantity: voltage
         unit: volt
         name: PSU Voltage
@@ -23,7 +23,6 @@ instruments:
         unit: volt
         name: PSU Sense Voltage
       current:
-        control: True
         quantity: current
         unit: amp
         name: PSU Current

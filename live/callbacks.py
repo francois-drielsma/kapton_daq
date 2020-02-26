@@ -211,7 +211,7 @@ def register_callbacks(app):
             device[meas_name].iloc[-1] = device_first
             device.to_csv(device_name, index=False)
         else:
-            value_scan = np.arange(device_first, device_last, device_step)
+            value_scan = np.arange(device_first, device_last+1e-9, device_step)
             device = pd.read_csv(device_name)
             for i, value in enumerate(value_scan):
                 device[meas_name].iloc[-1] = value

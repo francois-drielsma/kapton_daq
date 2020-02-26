@@ -6,6 +6,7 @@ instruments:
     type: power_supply
     make: hp
     model: HPe3631a
+    controls: ['voltage']
     comm:
       type: serial
       args:
@@ -13,7 +14,6 @@ instruments:
         baud: 9600
     measurements:
       voltage:
-        control: True
         quantity: voltage
         unit: volt
         name: PSU Voltage

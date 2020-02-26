@@ -120,7 +120,7 @@ class DAQ:
         """
         inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
         Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
-        Control = namedtuple('Probe', 'inst, meas, control, vinst, vmeas, vprobe')
+        Control = namedtuple('Control', 'inst, meas, control, vinst, vmeas, vprobe')
         self._data_keys = ['time']
         self._probes = []
         self._controls = []
@@ -135,13 +135,8 @@ class DAQ:
                     inst = getattr(getattr(ik, i['make']), i['model'])
                 except AttributeError:
                     raise ValueError('Instrument {} not found in InstrumentKit'.format(i['model']))
-                if i['type'] == power_supply:
-                    control_keys = []
-                    for k, m in i['measurements'].items():
-                        if 'control' in m and m['control']:
-                            control_keys.append(k)
-                    if control_keys:
-                        vinst = VirtualDevice(k, control_keys)
+                if 'controls' in i:
+                    vinst = VirtualDevice(k, i['controls'])
             else:
                 raise ValueError('Instrument type not supported: {}'.format(i['type']))
 
@@ -171,27 +166,24 @@ class DAQ:
                 elif i['type'] == 'power_supply':
                     if 'channel' in m:
                         inst = inst.channel[m['channel']]
-                        time.sleep(1)
                     inst.output = True
                     meas = inst.__class__.__dict__[m['quantity']]
                     probe = lambda inst, meas: meas.fget(inst)
-                    if 'value' in m:
-                        self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
-                        meas.fset(inst, m['value'])
-                        time.sleep(0.1)
-                    if 'control' in m and m['control']:
+                    if k in i['controls']:
                         self.log('Setting up controller for {}'.format(m['name']))
-                        vmeas = k
-                        probe = lambda vinst, vmeas: vinst.getter(vmeas)
                         control = lambda inst, meas, value: meas.fset(inst, value)
-                        self._controls.append(Control(inst, meas, control, vinst, vmeas, probe))
+                        vprobe = lambda vinst, vmeas: vinst.getter_update(vmeas)
+                        self._controls.append(Control(inst, meas, control, vinst, k, vprobe))
+                        if 'value' in m:
+                            self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
+                            meas.fset(inst, m['value'])
+                            vinst.setter(k, m['value'])
 
                 # Append the list of data keys
                 self._data_keys.append('{} [{}]'.format(m['name'], unit.u_symbol))
 
                 # Append a probe object
                 self._probes.append(Probe(inst, meas, probe, unit, m['name']))
-
 
     def initialize_output(self):
         """
@@ -230,13 +222,21 @@ class DAQ:
 
         return perc_count, min_count
 
+    def record(self, vals):
+        """
+        Records the last DAQ readings.
+        """
+        self._output.record(self._data_keys, vals)
+        self._output.write()
+        self._output.flush()
+
     def read(self, probe):
         """
         Reads a specific probe.
         """
         return self._convert_units(probe.probe(probe.inst, probe.meas), probe.unit)
 
-    def handle_fail(self, probe, error, fail_count):
+    def handle_read_fail(self, probe, error, fail_count):
         """
         Handles a failed read from a specific probe.
         """
@@ -266,10 +266,20 @@ class DAQ:
                     readings.append(float(self.read(p)))
                     break
                 except Exception as e:
-                    if not self.handle_fail(p, e, i+1):
+                    if not self.handle_read_fail(p, e, i+1):
                         return None
 
         return readings
+
+    def update_controls(self):
+        """
+        Check if the virtual power supply controls changed value.
+        If they did, update the value of the actual power supply.
+        """
+        for c in self._controls:
+            value, update = c.vprobe(c.vinst, c.vmeas)
+            if update:
+                c.control(c.inst, c.meas, value)
 
     def run(self):
         """
@@ -303,10 +313,11 @@ class DAQ:
             delta_t = curr_time-init_time
             readings = [delta_t]+readings
 
-            # Save to disk
-            self._output.record(self._data_keys, readings)
-            self._output.write()
-            self._output.flush()
+            # Save readings to disk
+            self.record(readings)
+
+            # Update the controlled values
+            self.update_controls()
 
             # Wait for next measurement, if minimum time requested
             time.sleep(self._rate)
