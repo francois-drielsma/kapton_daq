@@ -32,7 +32,7 @@ class VirtualDevice(object):
             val_string += '\n'
             file.write(val_string.format(*self._meas_vals.values()))
 
-    def getter_update(self, name):
+    def get_update(self, name):
         """
         Fetches a measurement, updates the last value
         stored and returns the update status
@@ -50,7 +50,7 @@ class VirtualDevice(object):
             updated = True
         return value, updated
 
-    def getter(self, name):
+    def get(self, name):
         """
         Fetches a measurement
         """
@@ -62,7 +62,7 @@ class VirtualDevice(object):
         df = pd.read_csv(self._dev_file)
         return float(df[name].iloc[-1])
 
-    def setter(self, name, value):
+    def set(self, name, value):
         """
         Sets the measurement to a new value
         """

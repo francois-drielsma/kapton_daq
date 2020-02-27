@@ -160,9 +160,9 @@ class DAQ:
                     probe = lambda inst, meas: inst.measure(meas)
                 elif i['type'] == 'virtual':
                     meas = k
-                    probe = lambda inst, meas: inst.getter(meas)
+                    probe = lambda inst, meas: inst.get(meas)
                     if 'value' in m:
-                        inst.setter(meas, m['value'])
+                        inst.set(meas, m['value'])
                 elif i['type'] == 'power_supply':
                     if 'channel' in m:
                         inst = inst.channel[m['channel']]
@@ -172,12 +172,12 @@ class DAQ:
                     if k in i['controls']:
                         self.log('Setting up controller for {}'.format(m['name']))
                         control = lambda inst, meas, value: meas.fset(inst, value)
-                        vprobe = lambda vinst, vmeas: vinst.getter_update(vmeas)
+                        vprobe = lambda vinst, vmeas: vinst.get_update(vmeas)
                         self._controls.append(Control(inst, meas, control, vinst, k, vprobe))
                         if 'value' in m:
                             self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
                             meas.fset(inst, m['value'])
-                            vinst.setter(k, m['value'])
+                            vinst.set(k, m['value'])
 
                 # Append the list of data keys
                 self._data_keys.append('{} [{}]'.format(m['name'], unit.u_symbol))
