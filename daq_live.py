@@ -1,5 +1,6 @@
 import os
 import dash
+import argparse
 
 # Check that the DAQ environment has been set
 if 'DAQ_BASEDIR' not in os.environ:
@@ -17,6 +18,14 @@ app.layout = layout
 from live.callbacks import register_callbacks
 register_callbacks(app)
 
+# Parse command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--port', type=int, default=8050,
+                    help="Sets the Flask server port number (default: 8050)")
+parser.add_argument('--host', type=str, default='127.0.0.1',
+                    help="Sets the Flask server host address (default: 127.0.0.1)")
+args = parser.parse_args()
+
 # Run the server
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=args.port, host=args.host)

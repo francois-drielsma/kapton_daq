@@ -80,7 +80,7 @@ class DAQ:
         """
         Parse the command line arguments and the configuration file.
         """
-        # Parse commande line arguments
+        # Parse command line arguments
         parser = argparse.ArgumentParser()
         parser.add_argument('--config', type=str,
                             help="Sets the config file")
