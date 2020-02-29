@@ -120,7 +120,7 @@ class DAQ:
         """
         inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
         Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
-        Control = namedtuple('Control', 'inst, meas, control, vinst, vmeas, vprobe')
+        Control = namedtuple('Control', 'inst, meas, control, vinst, vmeas, vprobe, unit, name')
         self._data_keys = ['time']
         self._probes = []
         self._controls = []
@@ -173,7 +173,7 @@ class DAQ:
                         self.log('Setting up controller for {}'.format(m['name']))
                         control = lambda inst, meas, value: meas.fset(inst, value)
                         vprobe = lambda vinst, vmeas: vinst.get_update(vmeas)
-                        self._controls.append(Control(inst, meas, control, vinst, k, vprobe))
+                        self._controls.append(Control(inst, meas, control, vinst, k, vprobe, unit, m['name']))
                         if 'value' in m:
                             self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
                             meas.fset(inst, m['value'])
@@ -236,13 +236,13 @@ class DAQ:
         """
         return self._convert_units(probe.probe(probe.inst, probe.meas), probe.unit)
 
-    def handle_read_fail(self, probe, error, fail_count):
+    def handle_fail(self, object, error, fail_count, type):
         """
-        Handles a failed read from a specific probe.
+        Handles a failed read or control of a specific instrument.
         """
         serr, sfat = Logger.severity.error, Logger.severity.fatal
-        self.log("Failed to read {} {} time(s)".format(probe.name, fail_count), serr)
-        self.log("Got instrument reading error:\n{}".format(error), serr)
+        self.log("Failed to {} {} {} time(s)".format(type, object.name, fail_count), serr)
+        self.log("Got instrument error:\n{}".format(error), serr)
         if fail_count == self._max_fails:
             self.log("Too many consecutive fails, killing DAQ...", sfat)
             return False
@@ -260,13 +260,13 @@ class DAQ:
         Probe the list of requested instruments.
         """
         readings = []
-        for i, p in enumerate(self._probes):
+        for p in self._probes:
             for i in range(self._max_fails):
                 try:
                     readings.append(float(self.read(p)))
                     break
                 except Exception as e:
-                    if not self.handle_read_fail(p, e, i+1):
+                    if not self.handle_fail(p, e, i+1, 'read'):
                         return None
 
         return readings
@@ -277,9 +277,23 @@ class DAQ:
         If they did, update the value of the actual power supply.
         """
         for c in self._controls:
-            value, update = c.vprobe(c.vinst, c.vmeas)
+            for i in range(self._max_fails):
+                try:
+                    value, update = c.vprobe(c.vinst, c.vmeas)
+                except:
+                    if not self.handle_fail(c, e, i+1, 'read'):
+                        return False
             if update:
-                c.control(c.inst, c.meas, value)
+                for i in range(self._max_fails):
+                    try:
+                        self.log("Setting {} to {} {}".format(c.name, value, c.unit.u_symbol))
+                        c.control(c.inst, c.meas, value)
+                        break
+                    except:
+                        if not self.handle_fail(c, e, i+1, 'set'):
+                            return False
+
+        return True
 
     def run(self):
         """
@@ -317,7 +331,8 @@ class DAQ:
             self.record(readings)
 
             # Update the controlled values
-            self.update_controls()
+            if not self.update_controls():
+                break
 
             # Wait for next measurement, if minimum time requested
             time.sleep(self._rate)
