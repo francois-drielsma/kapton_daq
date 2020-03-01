@@ -280,7 +280,8 @@ class DAQ:
             for i in range(self._max_fails):
                 try:
                     value, update = c.vprobe(c.vinst, c.vmeas)
-                except:
+                    break
+                except Exception as e:
                     if not self.handle_fail(c, e, i+1, 'read'):
                         return False
             if update:
@@ -289,7 +290,7 @@ class DAQ:
                         self.log("Setting {} to {} {}".format(c.name, value, c.unit.u_symbol))
                         c.control(c.inst, c.meas, value)
                         break
-                    except:
+                    except Exception as e:
                         if not self.handle_fail(c, e, i+1, 'set'):
                             return False
 
