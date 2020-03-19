@@ -108,17 +108,16 @@ class Controller:
         """
         Handles a failed read or control.
         """
-        serr, sfat = Logger.severity.error, Logger.severity.fatal
-        print("Failed to {} {} {} time(s)".format(type, self._device, fail_count), serr)
-        print("Got device error:\n{}".format(error), serr)
+        print("Failed to {} {} {} time(s)".format(type, self._device, fail_count))
+        print("Got device error:\n{}".format(error))
         if fail_count == self._max_fails:
-            print("Too many consecutive fails, killing Controller...", sfat)
+            print("Too many consecutive fails, killing Controller...")
             return False
         elif fail_count and fail_count % 5 == 0:
-            print("Five consecutive fails, will retry in one minute...", serr)
+            print("Five consecutive fails, will retry in one minute...")
             time.sleep(60)
         else:
-            print("Will retry in one second...", serr)
+            print("Will retry in one second...")
             time.sleep(1)
 
         return True
@@ -157,13 +156,16 @@ class Controller:
         killer = self.Killer()
         while abs(value-self._start) <= abs(self._value-self._start) and not killer.kill_now:
             # Set the current value
+            print('Setting {} to {}...'.format(self._quantity, value))
             self.set(value)
+            print('DONE')
             if value == self._value:
                 break
 
             # Increment the value, wait if necessary
             value += self._step
             if abs(value-self._start) <= abs(self._value-self._start):
+                print('Sleep for {} seconds'.format(self._time))
                 time.sleep(self._time)
 
 if __name__ == '__main__':
