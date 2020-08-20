@@ -152,6 +152,7 @@ class Controller:
         """
         Main Controller function.
         """
+        sign   = (self._step > 0) - (self._step < 0)
         value  = self._start
         killer = self.Killer()
         while abs(value-self._start) <= abs(self._value-self._start) and not killer.kill_now:
@@ -163,10 +164,9 @@ class Controller:
                 break
 
             # Increment the value, wait if necessary
-            value += self._step
-            if abs(value-self._start) <= abs(self._value-self._start):
-                print('Sleep for {} seconds'.format(self._time))
-                time.sleep(self._time)
+            value += sign*min(abs(self._step), abs(self._value-value))
+            print('Sleep for {} seconds'.format(self._time))
+            time.sleep(self._time)
 
 if __name__ == '__main__':
 
