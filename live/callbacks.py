@@ -13,12 +13,12 @@ from live.utils import *
 
 def register_callbacks(app):
 
-    @app.callback([Output('store-process-id', 'data'),
+    @app.callback([Output('store-daq-id', 'data'),
                    Output('button-start-daq', 'disabled'),
                    Output('button-stop-daq', 'disabled')],
                   [Input('button-start-daq', 'n_clicks'),
                    Input('button-stop-daq', 'n_clicks')],
-                  [State('store-process-id', 'data'),
+                  [State('store-daq-id', 'data'),
                    State('dropdown-config-selection', 'value'),
                    State('input-output-name', 'value')])
     def daq_controller(nstart, nstop, pid, cfg_name, out_name):
@@ -74,7 +74,7 @@ def register_callbacks(app):
 
 
     @app.callback(Output('interval-update', 'disabled'),
-                  [Input('store-process-id', 'data')])
+                  [Input('store-daq-id', 'data')])
     def refresh_interval(pid):
         '''
         App callback that enables the auto-refresh interval
@@ -85,7 +85,7 @@ def register_callbacks(app):
 
     @app.callback(Output('button-stop-daq', 'n_clicks'),
                   [Input('interval-update', 'n_intervals')],
-                  [State('store-process-id', 'data'),
+                  [State('store-daq-id', 'data'),
                    State('button-stop-daq', 'n_clicks')])
     def check_daq_status(_, pid, nstop):
         '''
@@ -100,7 +100,7 @@ def register_callbacks(app):
 
     @app.callback(Output('button-start-daq', 'n_clicks'),
                   [Input('interval-update', 'n_intervals')],
-                  [State('store-process-id', 'data'),
+                  [State('store-daq-id', 'data'),
                    State('button-start-daq', 'n_clicks')])
     def update_daq_process(_, pid, nstart):
         '''
@@ -149,11 +149,10 @@ def register_callbacks(app):
     @app.callback([Output('dropdown-device-selection', 'options'),
                    Output('dropdown-device-selection', 'disabled'),
                    Output('dropdown-meas-selection', 'disabled'),
-                   Output('input-device-first', 'disabled'),
-                   Output('input-device-last', 'disabled'),
+                   Output('input-device-value', 'disabled'),
                    Output('input-device-step', 'disabled'),
                    Output('input-device-time', 'disabled'),
-                   Output('button-device-set', 'disabled')],
+                   Output('button-set-device', 'disabled')],
                   [Input('button-stop-daq', 'disabled')])
     def enable_device_controls(daq_disable):
         '''
@@ -168,7 +167,7 @@ def register_callbacks(app):
             dev_options = [{'label':f.split('/')[-1], 'value':f} for f in dev_files]
 
         # Set the device controls
-        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
+        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
 
 
     @app.callback(Output('dropdown-meas-selection', 'options'),
@@ -187,44 +186,34 @@ def register_callbacks(app):
         return meas_options
 
 
-    @app.callback(Output('button-device-set', 'label'),
-                  [Input('button-device-set', 'n_clicks')],
+    @app.callback(Output('button-set-device', 'label'),
+                  [Input('button-set-device', 'n_clicks')],
                   [State('dropdown-device-selection', 'value'),
                    State('dropdown-meas-selection', 'value'),
-                   State('input-device-first', 'value'),
-                   State('input-device-last', 'value'),
+                   State('input-device-value', 'value'),
                    State('input-device-step', 'value'),
                    State('input-device-time', 'value')])
-    def set_device(nclicks, device_name, meas_name, device_first, device_last, device_step, device_time):
+    def device_controller(nclicks, device, quantity, value, step, time):
         '''
         App callback that sets the value of the selected device
         according to the value displayed in the input boxes
         '''
         # If the necessary arguments are not set, skip
-        if nclicks is None or not device_name or not meas_name:
+        if nclicks is None or not device or not quantity:
             return ''
 
-        # If the device step is set to 0, set the device to first value
-        # Otherwise loop through all the values
-        if device_step == 0:
-            device = pd.read_csv(device_name)
-            device[meas_name].iloc[-1] = device_first
-            device.to_csv(device_name, index=False)
-        else:
-            value_scan = np.arange(device_first, device_last+1e-9, device_step)
-            device = pd.read_csv(device_name)
-            for i, value in enumerate(value_scan):
-                device[meas_name].iloc[-1] = value
-                device.to_csv(device_name, index=False)
-                if i < len(value_scan)-1:
-                    time.sleep(device_time)
+        # Run the controller script, freeze the device controls while it runs
+        device = device.split('/')[-1]
+        args = ['python3', os.environ['DAQ_BASEDIR']+'/controller.py', '--device', device,\
+            '--quantity', quantity, '--value', str(value), '--step', str(step), '--time', str(time)]
+        pid = subprocess.Popen(' '.join(args), preexec_fn=os.setsid, shell=True).pid
 
         return ''
 
 
     @app.callback([Output('dropdown-file-selection', 'options'),
                    Output('dropdown-file-selection', 'value')],
-                  [Input('store-process-id', 'data')])
+                  [Input('store-daq-id', 'data')])
     def update_data_list(_):
         '''
         App callback that updates the list of available
@@ -232,7 +221,7 @@ def register_callbacks(app):
         '''
         # Update the list of data files, set the last DAQ output as current
         data_dir = os.environ['DAQ_DATDIR']
-        data_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir)]
+        data_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.csv')]
         data_file = None
         if len(data_files):
             data_files.sort()
@@ -294,7 +283,7 @@ def register_callbacks(app):
 
     @app.callback(Output('text-log', 'value'),
                   [Input('interval-update', 'n_intervals'),
-                   Input('store-process-id', 'data')])
+                   Input('store-daq-id', 'data')])
     def update_log_file(_, __):
         '''
         App callback that updates the log file displayed

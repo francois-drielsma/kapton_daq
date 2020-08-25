@@ -22,8 +22,8 @@ class Controller:
         self._quantity    = '' # Quantity to set
         self._start_value = 0. # First value to set
         self._stop_value  = 0. # Last value to set
-        self._step_size   = 0. # Step size between values
-        self._step_time   = 30 # Sleep time between each step
+        self._step        = 0. # Step size between values
+        self._time        = 30 # Sleep time between each step
         self._max_fails   = 6  # Maximum allowed number of failed set
 
         # Parse configuration

@@ -312,7 +312,7 @@ class DAQ:
         while (not self._time or (curr_time - init_time) < self._time) and not killer.kill_now:
             # Initialize the output file. If the file contains more
             # than a certain number of lines, create a new one
-            max_count = int(1e5)
+            max_count = int(1e4)
             if not ite_count%max_count:
                 if self._output:
                     self._output.close()

@@ -98,12 +98,17 @@ The DAQ live viewer currently contains the following features:
     - Selection of display style
     - Display of last readings
   - DAQ Controls:
-    - Start and stop button which run `daq.py` in the background
+    - Start and stop buttons which run `daq.py` in the background
     - Name input box (to specify the DAQ output file name)
-    - Configuration file selector
+    - Configuration file dropdown selection menu
     - Configuration file display
-  - Virtual Controls:
-    - Set the value of virtual devices
+  - Device Controls:
+    - Set and stop buttons which run `controller.py` in the background
+    - Device dropdown selection menu
+    - Quantity dropdown selection menu
+    - `Value`: value to set the quantity to
+    - `Step`: step size by which to increment the current value to get to the target
+    - `Time`: amount of time between each step (in seconds)
   - DAQ Log:
     - Log of the last running `daq.py` process
 
@@ -124,6 +129,15 @@ For more information about the available arguments, run
 ```bash
 python3 daq.py -h
 ```
+
+### Exectute the device controller standalone
+
+Simply run
+
+```bash
+python3 controller.py --device DEVICE --quantity QUANTITY --value VALUE --step STEP --time TIME
+```
+and it will set the QUANTITY of DEVICE to VALUE by increments of STEP every TIME seconds.
 
 ### Build a configuration file
 

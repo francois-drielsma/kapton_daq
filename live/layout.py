@@ -182,10 +182,13 @@ def div_daq_controls():
             ),
 
             # Invisible div that stores the DAQ process ID
-            dcc.Store(id='store-process-id')
+            dcc.Store(id='store-daq-id'),
+
+            # Invisible div that stores the device controller process ID
+            dcc.Store(id='store-controller-id')
         ])
     ],
-        className="four columns",
+        className="three columns",
         style={
             "border-radius": "5px",
             "border-width": "5px",
@@ -209,6 +212,36 @@ def div_device_controls():
 
         # Div with the device selection
         html.Div([
+
+            # Div with the set and stop buttons
+            html.Div([
+                # Button that sets the device to the value in the input box
+                daq.StopButton(
+                    id='button-set-device',
+                    children='Set',
+                    className='one column',
+                    disabled=True,
+                    style={
+                        "display": "flex",
+                        "justify-content": "center",
+                        "width": "49%",
+                    }
+                ),
+
+                # Button that stops the iterative setting of the device
+                daq.StopButton(
+                    id='button-stop-device',
+                    children='Stop',
+                    className='one column',
+                    disabled=True,
+                    style={
+                        "display": "flex",
+                        "justify-content": "center",
+                        "width": "49%",
+                    }
+                )
+            ]),
+
             # DAQ device dropdown selector
             dcc.Dropdown(
                 id='dropdown-device-selection',
@@ -217,12 +250,12 @@ def div_device_controls():
                 clearable=False,
                 searchable=False,
                 disabled=True,
-                placeholder='Select a device',
+                placeholder='Select the device to control',
                 style={
                     "display": "flex",
                     "justify-content": "center",
                     "width": "90%",
-                    'margin-top': '10px',
+                    'margin-top': '25px',
                     'margin-left': "5%"
                 }
             ),
@@ -235,21 +268,21 @@ def div_device_controls():
                 clearable=False,
                 searchable=False,
                 disabled=True,
-                placeholder='Select a measurement',
+                placeholder='Select the quantity to set',
                 style={
                     "display": "flex",
                     "justify-content": "center",
                     "width": "90%",
-                    'margin-top': '10px',
+                    'margin-top': '5px',
                     'margin-left': "5%"
                 }
             ),
 
-            # Div with the value input and the setter button
+            # Div with the value input and the start value
             html.Div([
                 # Input box with the value to set the device to
                 daq.NumericInput(
-                    id='input-device-first',
+                    id='input-device-value',
                     value=0,
                     min=-sys.float_info.max,
                     max=sys.float_info.max,
@@ -266,45 +299,11 @@ def div_device_controls():
                         "margin-top": "10px",
                         "margin-left": "10%"
                     }
-                ),
-
-                # Button that sets the device to the value in the input box
-                daq.StopButton(
-                    id='button-device-set',
-                    children='Set',
-                    className='six columns',
-                    disabled=True,
-                    style={
-                        "display": "flex",
-                        "justify-content": "center",
-                        "width": "50%",
-                        "margin-top": "40px"
-                    }
                 )
             ]),
 
+            # Div with the step size and the time delay between steps
             html.Div([
-                # Input box with the last value to set the device to
-                daq.NumericInput(
-                    id='input-device-last',
-                    value=0,
-                    min=-sys.float_info.max,
-                    max=sys.float_info.max,
-                    size=80,
-                    label='Last',
-                    labelPosition='top',
-                    className='four columns',
-                    disabled=True,
-                    style={
-                        "display": "flex",
-                        "justify-content": "center",
-                        "align-items": "center",
-                        "width": "25%",
-                        "margin-top": "10px",
-                        "margin-left": "10%"
-                    }
-                ),
-
                 # Input box with the step between each value to set
                 daq.NumericInput(
                     id='input-device-step',
@@ -314,7 +313,7 @@ def div_device_controls():
                     size=80,
                     label='Step',
                     labelPosition='top',
-                    className='four columns',
+                    className='six columns',
                     disabled=True,
                     style={
                         "display": "flex",
@@ -341,7 +340,8 @@ def div_device_controls():
                         "justify-content": "center",
                         "align-items": "center",
                         "width": "25%",
-                        "margin-top": "10px"
+                        "margin-top": "10px",
+                        "margin-bottom": "40px"
                     }
                 )
             ])
@@ -351,7 +351,7 @@ def div_device_controls():
             style={'margin-top': 10}
         )
     ],
-        className="two columns",
+        className="three columns",
         style={
             "border-radius": "5px",
             "border-width": "5px",
@@ -404,7 +404,8 @@ def div_daq_log():
             "position": "relative",
             "height": "400px",
             "margin-top": "10px",
-            "margin-right": "0px"
+            "margin-right": "0px",
+            "width": "55%"
         }
     )
 
