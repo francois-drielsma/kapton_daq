@@ -39,8 +39,8 @@ def register_callbacks(app):
             n_files = len(os.listdir(os.environ['DAQ_DATDIR']))
 
             # Start the DAQ process
-            args = ['python3', os.environ['DAQ_BASEDIR']+'/daq.py', '--config', cfg_name, '--name', out_name]
-            pid = subprocess.Popen(' '.join(args), preexec_fn=os.setsid, shell=True).pid
+            args = ['exec', 'python3', os.environ['DAQ_BASEDIR']+'/daq.py', '--config', cfg_name, '--name', out_name]
+            pid = subprocess.Popen(' '.join(args), shell=True).pid
 
             # Wait for the program to produce a new data file, as long as it is alive
             while len(os.listdir(os.environ['DAQ_DATDIR'])) == n_files:
@@ -55,7 +55,7 @@ def register_callbacks(app):
         else:
             # Send a kill signal to the DAQ, wait for it to die
             try:
-                os.killpg(int(pid), signal.SIGTERM)
+                os.kill(int(pid), signal.SIGTERM)
                 while process_is_live(pid):
                     time.sleep(0.1)
                 time.sleep(0.1)
@@ -204,9 +204,9 @@ def register_callbacks(app):
 
         # Run the controller script, freeze the device controls while it runs
         device = device.split('/')[-1]
-        args = ['python3', os.environ['DAQ_BASEDIR']+'/controller.py', '--device', device,\
+        args = ['exec', 'python3', os.environ['DAQ_BASEDIR']+'/controller.py', '--device', device,\
             '--quantity', quantity, '--value', str(value), '--step', str(step), '--time', str(time)]
-        pid = subprocess.Popen(' '.join(args), preexec_fn=os.setsid, shell=True).pid
+        pid = subprocess.Popen(' '.join(args), shell=True).pid
 
         return ''
 

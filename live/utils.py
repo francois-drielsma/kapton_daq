@@ -20,11 +20,11 @@ def find_daq_process():
     pids = []
     for proc in psutil.process_iter():
         if proc.name() == 'python3':
-            proc_dict = proc.as_dict(['ppid', 'cmdline'])
+            proc_dict = proc.as_dict(['pid', 'cmdline'])
             pid = None
             for string in proc_dict['cmdline']:
                 if 'daq.py' in string:
-                    pid = proc_dict['ppid']
+                    pid = proc_dict['pid']
                     break
             if pid:
                 pids.append(pid)

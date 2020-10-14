@@ -29,6 +29,7 @@ class DAQ:
         self._max_fails   = 16   # Maximum allowed number of failed reads
         self._output_name = ''   # Output file name
         self._output      = None # Output file
+        self._killer      = None # Active instance of the Killer subclass
 
         # Parse configuration
         self._cfg_name   = ''    # Configuration file name
@@ -248,7 +249,10 @@ class DAQ:
             return False
         elif fail_count and fail_count % 5 == 0:
             self.log("Five consecutive fails, will retry in one minute...", serr)
-            time.sleep(60)
+            for i in range(60):
+                if self._killer.kill_now:
+                    break
+                time.sleep(1)
         else:
             self.log("Will retry in one second...", serr)
             time.sleep(1)
@@ -266,7 +270,7 @@ class DAQ:
                     readings.append(float(self.read(p)))
                     break
                 except Exception as e:
-                    if not self.handle_fail(p, e, i+1, 'read'):
+                    if self._killer.kill_now or not self.handle_fail(p, e, i+1, 'read'):
                         return None
 
         return readings
@@ -291,7 +295,7 @@ class DAQ:
                         c.control(c.inst, c.meas, value)
                         break
                     except Exception as e:
-                        if not self.handle_fail(c, e, i+1, 'set'):
+                        if self._killer.kill_now or not self.handle_fail(c, e, i+1, 'set'):
                             return False
 
         return True
@@ -308,8 +312,8 @@ class DAQ:
         # Loop for the requested amount of time
         init_time = curr_time = time.time()
         ite_count, perc_count, min_count = 0, 0, 0
-        killer = self.Killer()
-        while (not self._time or (curr_time - init_time) < self._time) and not killer.kill_now:
+        self._killer = self.Killer()
+        while (not self._time or (curr_time - init_time) < self._time) and not self._killer.kill_now:
             # Initialize the output file. If the file contains more
             # than a certain number of lines, create a new one
             max_count = int(1e4)
@@ -345,7 +349,10 @@ class DAQ:
             ite_count += 1
 
         # Close the output file
-        self.log("...DONE!")
+        if self._killer.kill_now:
+            self.log("DAQ terminated")
+        else:
+            self.log("Requested acquisition time completed")
         self.log("Closing DAQ output file")
         self._output.close()
 
