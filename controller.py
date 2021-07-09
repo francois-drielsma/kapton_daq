@@ -99,7 +99,7 @@ class Controller:
             self._step  = args.step
             if self._start > self._value:
                 self._step = -abs(self._step)
-            self._start += min(self._step, self._value-self._start, key=lambda x: abs(x))
+            self._start += min(self._step, self._value-self._start, key=abs)
             self._time  = args.time if args.time else self._time
         else:
             self._start = self._value
@@ -163,7 +163,7 @@ class Controller:
                 break
 
             # Increment the value, wait if necessary
-            value += min(self._step, self._value-value, key=lambda x: abs(x))
+            value += min(self._step, self._value-value, key=abs)
             print('Sleep for {} seconds'.format(self._time))
             time.sleep(self._time)
 
