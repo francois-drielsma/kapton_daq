@@ -99,7 +99,7 @@ class Controller:
             self._step  = args.step
             if self._start > self._value:
                 self._step = -abs(self._step)
-            self._start += self._step
+            self._start += min(self._step, self._value-self._start, key=lambda x: abs(x))
             self._time  = args.time if args.time else self._time
         else:
             self._start = self._value
