@@ -28,6 +28,38 @@ def div_graph_daq():
                 style={'margin-top': '10px'}
             ),
 
+            # Selection of the amount of time to represent (not great)
+            html.Div([
+                html.Div([
+                    dcc.Input(
+                        id='input-time-range',
+                        value=1,
+                        type='number',
+                        style={"width": "100%"}
+                    )],
+                    style={'margin-top': '10px'},
+                    className='six columns'
+                ),
+                html.Div([
+                    dcc.Dropdown(
+                        id='dropdown-time-range',
+                        clearable=False,
+                        searchable=True,
+                        options=[
+                            {'label':'second(s)','value':'seconds'},
+                            {'label':'minute(s)','value':'minutes'},
+                            {'label':'hour(s)','value':'hours'},
+                            {'label':'day(s)','value':'days'}],
+                        value='hours',
+                        style={"width": "100%"}
+                    )],
+                    style={'margin-top': '10px'},
+                    className='six columns'
+                )],
+                style={'margin-bottom': '10px'},
+                className='twelve columns'
+            ),
+
             # Box that shows the elapsed time
             html.Div(
                 id="div-time-display",
@@ -42,11 +74,11 @@ def div_graph_daq():
 
                 dcc.RadioItems(
                     options=[
-                        {'label': ' Overlapping', 'value': 'overlap'},
                         {'label': ' Separate (Vertical)', 'value': 'separate_vertical'},
-                        {'label': ' Separate (Horizontal)', 'value': 'separate_horizontal'}
+                        {'label': ' Separate (Horizontal)', 'value': 'separate_horizontal'},
+                        {'label': ' Overlapping', 'value': 'overlap'}
                     ],
-                    value='overlap',
+                    value='separate_vertical',
                     id='radio-display-mode-daq',
                     style={'margin-left': '5px'}
                 )

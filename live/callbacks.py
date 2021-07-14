@@ -234,8 +234,10 @@ def register_callbacks(app):
                    Output('store-daq-keys', 'data'),
                    Output('store-daq-values', 'data')],
                   [Input('interval-update', 'n_intervals'),
-                   Input('dropdown-file-selection', 'value')])
-    def update_data_file(_, daq_file):
+                   Input('dropdown-file-selection', 'value'),
+                   Input('input-time-range', 'value'),
+                   Input('dropdown-time-range', 'value')])
+    def update_data_file(_, daq_file, time_value, time_unit):
         '''
         App callback that reads the CSV data file
         when the file selection dropdown is activatived
@@ -244,12 +246,24 @@ def register_callbacks(app):
         if daq_file:
             try:
                 daq_df = pd.read_csv(daq_file)
+                time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
+                daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
                 daq_keys = daq_df.keys().to_list()
                 daq_values = {key:daq_df[key].iloc[-1] for key in daq_keys}
                 if 'time' not in daq_keys:
                     print('No time stamps in the data, must provide a \'time\' column')
                     return None, [], {}
                 daq_keys.remove('time')
+                try:
+                    sdatetime = pd.to_datetime(os.path.basename(daq_file)[:19], format='%Y-%m-%d_%H-%M-%S')
+                    times = np.array(daq_df['time'])
+                    stime = pd.read_csv(daq_file, nrows=1)['time'].iloc[0]
+                    times -= stime
+                    datetimes = [sdatetime + datetime.timedelta(seconds=t) for t in times]
+                    daq_df['datetime'] = datetimes
+                except ValueError:
+                    print('Could not create datetimes, will draw relative time')
+                    pass
                 daq_data = daq_df.to_json(orient='split', index=False)
                 return daq_data, daq_keys, daq_values
             except FileNotFoundError:
@@ -338,7 +352,7 @@ def register_callbacks(app):
             elapsed_time = int(daq_values['time'])
 
         time_delta = str(datetime.timedelta(seconds=elapsed_time))
-        return html.H6(f"Time elapsed: {time_delta}",
+        return html.H6(f"Run time: {time_delta}",
                        style={'font-weight': 'bold',
                               'margin-top': '3px'})
 

@@ -73,7 +73,11 @@ def update_graph(daq_data,
         return dcc.Graph(id='graph-daq')
 
     # Use time as the x axis
+    xaxis_title = 'Time [s]'
     times = daq_df['time']
+    if 'datetime' in daq_df:
+        xaxis_title = ''
+        times = daq_df['datetime']
 
     # Initialize a trace for each quantity measured by the DAQ
     traces = []
@@ -90,10 +94,8 @@ def update_graph(daq_data,
 
     # Initialize the layout
     plotly_layout = go.Layout()
-
     left_margin = (n_keys-1)*.05
-    layout_kwargs = {'title': 'DAQ monitor',
-                     'xaxis': {'title': "Time [s]", 'domain':[left_margin, 1]}}
+    layout_kwargs = {'xaxis': {'title': xaxis_title, 'domain':[left_margin, 1]}}
 
     # Separate the measurements in several vertical graphs
     if display_mode == 'separate_vertical':
@@ -107,9 +109,8 @@ def update_graph(daq_data,
         for i, trace in enumerate(traces):
             figure.append_trace(trace, i+1, 1)
 
-        figure['layout']['title'] = layout_kwargs['title']
         figure['layout']['showlegend'] = False
-        figure['layout']['xaxis{}'.format(len(keys))].update(title = 'Time [s]')
+        figure['layout']['xaxis{}'.format(len(keys))].update(title = xaxis_title)
         for i, key in enumerate(keys):
             figure['layout']['yaxis'+str(i+1)].update(title = key)
 
@@ -123,10 +124,9 @@ def update_graph(daq_data,
         for i, trace in enumerate(traces):
             figure.append_trace(trace, 1, i+1)
 
-        figure['layout']['title'] = layout_kwargs['title']
         figure['layout']['showlegend'] = False
         for i, key in enumerate(keys):
-            figure['layout']['xaxis'+str(i+1)].update(title = 'Time [s]')
+            figure['layout']['xaxis'+str(i+1)].update(title = xaxis_title)
             figure['layout']['yaxis'+str(i+1)].update(title = key)
 
     # Overlap the measurents on a single canvas

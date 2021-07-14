@@ -29,6 +29,7 @@ class DAQ:
         self._max_fails   = 16   # Maximum allowed number of failed reads
         self._output_name = ''   # Output file name
         self._output      = None # Output file
+        self._max_count   = -1   # Maximum number of entries in a single data file (-1: no limit)
         self._killer      = None # Active instance of the Killer subclass
 
         # Parse configuration
@@ -310,16 +311,15 @@ class DAQ:
         self.log("DAQ refresh rate: "+(str(self._rate)+' s' if self._rate else 'AFAP'))
 
         # Loop for the requested amount of time
+        self.initialize_output()
         init_time = curr_time = time.time()
         ite_count, perc_count, min_count = 0, 0, 0
         self._killer = self.Killer()
         while (not self._time or (curr_time - init_time) < self._time) and not self._killer.kill_now:
-            # Initialize the output file. If the file contains more
-            # than a certain number of lines, create a new one
-            max_count = int(1e4)
-            if not ite_count%max_count:
-                if self._output:
-                    self._output.close()
+            # If the current data file contains more than
+            # a certain number of lines, create a new one
+            if self._max_count > 0 and not ite_count%self._max_count:
+                self._output.close()
                 self.initialize_output()
 
             # Acquire measurements, break if None
