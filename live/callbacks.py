@@ -246,6 +246,7 @@ def register_callbacks(app):
 
 
     @app.callback([Output('dropdown-device-selection', 'options'),
+                   Output('dropdown-device-selection', 'value'),
                    Output('dropdown-device-selection', 'disabled'),
                    Output('dropdown-meas-selection', 'disabled'),
                    Output('input-device-value', 'disabled'),
@@ -259,16 +260,20 @@ def register_callbacks(app):
         '''
         # Update the list of device devices
         dev_options = []
+        dev_value = None
         if not daq_disable:
             dev_dir = os.environ['DAQ_DEVDIR']
             dev_files = [os.path.join(dev_dir, f) for f in os.listdir(dev_dir)]
             dev_options = [{'label':f.split('/')[-1], 'value':f} for f in dev_files]
+            if len(dev_options):
+                dev_value = dev_options[0]['value']
 
         # Set the device controls
-        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
+        return dev_options, dev_value, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
 
 
-    @app.callback(Output('dropdown-meas-selection', 'options'),
+    @app.callback([Output('dropdown-meas-selection', 'options'),
+                   Output('dropdown-meas-selection', 'value')],
                   [Input('dropdown-device-selection', 'value')])
     def update_device_measurements(device_name):
         '''
@@ -277,11 +282,14 @@ def register_callbacks(app):
         '''
         # Update the list of device devices
         meas_options = []
+        meas_value = None
         if device_name:
             meas_keys = pd.read_csv(device_name).keys()
             meas_options = [{'label':k, 'value':k} for k in meas_keys]
+            if len(meas_options):
+                meas_value = meas_options[0]['value']
 
-        return meas_options
+        return meas_options, meas_value
 
 
     @app.callback([Output('dropdown-file-selection', 'options'),
