@@ -105,23 +105,19 @@ def update_graph(daq_data,
             name=name
         ))
 
-    # Initialize the layout
-    plotly_layout = go.Layout()
-    left_margin = (n_keys-1)*.05
-    layout_kwargs = {'xaxis': {'title': xaxis_title, 'domain':[left_margin, 1]}}
-
     # Separate the measurements in several vertical graphs
     if display_mode == 'separate_vertical':
         figure = subplots.make_subplots(rows=max(1, n_keys),
-                                     cols=1,
-                                     print_grid=False,
-                                     shared_xaxes=True,
-                                     shared_yaxes=False,
-                                     vertical_spacing=0.001)
+                                        cols=1,
+                                        print_grid=False,
+                                        shared_xaxes=True,
+                                        shared_yaxes=False,
+                                        vertical_spacing=0.025)
 
         for i, trace in enumerate(traces):
             figure.append_trace(trace, i+1, 1)
 
+        figure['layout']['margin'] = {'b':0, 't':30}
         figure['layout']['showlegend'] = False
         figure['layout']['xaxis{}'.format(len(keys))].update(title = xaxis_title)
         for i, key in enumerate(keys):
@@ -130,13 +126,14 @@ def update_graph(daq_data,
     # Separate the measurements in several horizontal graphs
     elif display_mode == 'separate_horizontal':
         figure = subplots.make_subplots(rows=1,
-                                     cols=max(1, n_keys),
-                                     shared_yaxes=False,
-                                     print_grid=False)
+                                        cols=max(1, n_keys),
+                                        shared_yaxes=False,
+                                        print_grid=False)
 
         for i, trace in enumerate(traces):
             figure.append_trace(trace, 1, i+1)
 
+        figure['layout']['margin'] = {'b':0, 't':30}
         figure['layout']['showlegend'] = False
         for i, key in enumerate(keys):
             figure['layout']['xaxis'+str(i+1)].update(title = xaxis_title)
@@ -144,6 +141,10 @@ def update_graph(daq_data,
 
     # Overlap the measurents on a single canvas
     elif display_mode == 'overlap':
+        left_margin = (n_keys-1)*.05
+        layout_kwargs = {'xaxis':{'title': xaxis_title, 'domain':[left_margin, 1]},
+                         'margin': {'b':0, 't':30}}
+
         for i, key in enumerate(keys):
             axis_name = 'yaxis' + str(i + 1) * (i > 0)
             yaxis = 'y' + str(i + 1) * (i > 0)

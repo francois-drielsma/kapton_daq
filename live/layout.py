@@ -103,7 +103,7 @@ def div_graph_daq():
                          className='six columns')
             ],
                 className='row',
-                style={'margin-top': '10px',
+                style={'margin-top': '0px',
                        'position':'relative'}
             )
 
