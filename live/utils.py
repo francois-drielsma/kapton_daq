@@ -13,9 +13,9 @@ def key_elements(key):
     return name, unit
 
 
-def find_daq_process():
+def find_process(name):
     '''
-    Function that finds existing DAQ processes
+    Function that finds existing python processes with name
     '''
     pids = []
     for proc in psutil.process_iter():
@@ -23,7 +23,7 @@ def find_daq_process():
             proc_dict = proc.as_dict(['pid', 'cmdline'])
             pid = None
             for string in proc_dict['cmdline']:
-                if 'daq.py' in string:
+                if name in string:
                     pid = proc_dict['pid']
                     break
             if pid:
@@ -44,6 +44,19 @@ def process_is_live(pid):
            return True
     except psutil.NoSuchProcess:
         return False
+
+
+def kill_process(pid):
+    '''
+    Kills a process and wait for it to be dead
+    '''
+    try:
+        os.kill(int(pid), signal.SIGTERM)
+        while process_is_live(pid):
+            time.sleep(0.1)
+        time.sleep(0.1)
+    except:
+        pass
 
 
 def update_graph(daq_data,

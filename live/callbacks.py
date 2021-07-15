@@ -19,19 +19,19 @@ def register_callbacks(app):
                   [Input('button-start-daq', 'n_clicks'),
                    Input('button-stop-daq', 'n_clicks')],
                   [State('store-daq-id', 'data'),
+                   State('store-controller-id', 'data'),
                    State('dropdown-config-selection', 'value'),
                    State('input-output-name', 'value')])
-    def daq_controller(nstart, nstop, pid, cfg_name, out_name):
+    def daq_controller(nstart, nstop, daqpid, contpid, cfg_name, out_name):
         '''
         App callback that starts the DAQ when requested to do so,
         records the DAQ process ID to know what to kill,
-        disables the start button and enables the stop button,
-        initializes the auto-refresh interval
+        disables the start button and enables the stop button
         '''
         # If no DAQ process is running, start one
-        if not pid:
+        if not daqpid:
             # Check that there isn't already a running processes
-            pids = find_daq_process()
+            pids = find_process('daq.py')
             if len(pids):
                 return str(pids[-1]), True, False
 
@@ -40,27 +40,36 @@ def register_callbacks(app):
 
             # Start the DAQ process
             args = ['exec', 'python3', os.environ['DAQ_BASEDIR']+'/daq.py', '--config', cfg_name, '--name', out_name]
-            pid = subprocess.Popen(' '.join(args), shell=True).pid
+            daqpid = subprocess.Popen(' '.join(args), shell=True).pid
 
             # Wait for the program to produce a new data file, as long as it is alive
             while len(os.listdir(os.environ['DAQ_DATDIR'])) == n_files:
-                if not process_is_live(pid):
+                if not process_is_live(daqpid):
                     return '', False, True
                 time.sleep(0.1)
 
             # Disable the start button
-            return str(pid), True, False
+            return str(daqpid), True, False
 
         # If there is one running, kill it
         else:
+            # If there is a controller job underway, kill it and wait for it to die
+            if contpid:
+                try:
+                    os.kill(int(contpid), signal.SIGTERM)
+                    while process_is_live(pid):
+                        time.sleep(0.1)
+                    time.sleep(0.1)
+                except:
+                    pass
+
             # Send a kill signal to the DAQ, wait for it to die
             try:
-                os.kill(int(pid), signal.SIGTERM)
-                while process_is_live(pid):
+                os.kill(int(daqpid), signal.SIGTERM)
+                while process_is_live(daqpid):
                     time.sleep(0.1)
                 time.sleep(0.1)
             except:
-                print('The DAQ process has already been terminated')
                 pass
 
             # Delete the virtual devices
@@ -108,7 +117,7 @@ def register_callbacks(app):
         process running daq.py, raises if multiple are found
         '''
         if not pid:
-            pids = find_daq_process()
+            pids = find_process('daq.py')
             if len(pids) == 1:
                 print('DAQ process already running, disabling Start button')
                 return nstart+1 if nstart else 1
@@ -131,8 +140,8 @@ def register_callbacks(app):
         return daq_disable, daq_disable
 
 
-    @app.callback([Output("text-config", "value"),
-                   Output("input-output-name", "value")],
+    @app.callback([Output('text-config', 'value'),
+                   Output('input-output-name', 'value')],
                   [Input('dropdown-config-selection', 'value')])
     def update_config_file(cfg_name):
         '''
@@ -146,13 +155,102 @@ def register_callbacks(app):
         return '', ''
 
 
+    @app.callback([Output('store-controller-id', 'data'),
+                   Output('button-set-device', 'disabled'),
+                   Output('button-stop-device', 'disabled')],
+                  [Input('button-set-device', 'n_clicks'),
+                   Input('button-stop-device', 'n_clicks')],
+                  [State('store-controller-id', 'data'),
+                   State('dropdown-device-selection', 'value'),
+                   State('dropdown-meas-selection', 'value'),
+                   State('input-device-value', 'value'),
+                   State('input-device-step', 'value'),
+                   State('input-device-time', 'value')])
+    def device_controller(nset, nstop, contpid, device, quantity, value, step, timeint):
+        '''
+        App callback that starts the Controller when requested to do so,
+        records the Controller process ID to know what to kill,
+        disables the set button and enables the stop button
+        '''
+        # If nset is larger than nstop, initialize the controller
+        if nstop != nset:
+            # Check that there isn't already a running processes
+            pids = find_process('controller.py')
+            if len(pids):
+                return str(pids[-1]), True, False
+
+            # Start the Controller process
+            device = device.split('/')[-1]
+            args = ['exec', 'python3', os.environ['DAQ_BASEDIR']+'/controller.py', '--device', device,\
+                '--quantity', quantity, '--value', str(value), '--step', str(step), '--time', str(timeint)]
+            contpid = subprocess.Popen(' '.join(args), shell=True).pid
+
+            # Disable the start button
+            return str(contpid), True, False
+        else:
+            if contpid:
+                try:
+                    os.kill(int(contpid), signal.SIGTERM)
+                    while process_is_live(pid):
+                        time.sleep(0.1)
+                    time.sleep(0.1)
+                except:
+                    pass
+            daq_pids = find_process('daq.py')
+            cont_disable = not bool(len(daq_pids))
+            return '', cont_disable, True
+
+
+    @app.callback(Output('button-stop-device', 'n_clicks'),
+                  [Input('interval-update', 'n_intervals'),
+                   Input('button-stop-daq', 'disabled')],
+                  [State('store-controller-id', 'data'),
+                   State('button-stop-device', 'n_clicks'),
+                   State('button-set-device', 'disabled'),
+                   State('button-stop-device', 'disabled')])
+    def check_controller_status(_, daq_disable, pid, nstop, set_disable, stop_disable):
+        '''
+        App callback that automatically presses the stop
+        button if the Controller process has died
+        '''
+        if pid and not process_is_live(pid):
+            return nstop + 1 if nstop else 1
+        elif daq_disable and pid and process_is_live(pid):
+            return nstop + 1 if nstop else 1
+        elif daq_disable or set_disable == stop_disable:
+            return nstop
+        else:
+            raise PreventUpdate
+
+
+    @app.callback(Output('button-set-device', 'n_clicks'),
+                  [Input('button-stop-daq', 'disabled')],
+                  [State('store-controller-id', 'data'),
+                   State('button-set-device', 'n_clicks'),
+                   State('button-stop-device', 'n_clicks')])
+    def update_controller_process(_, pid, nset, nstop):
+        '''
+        App callback that looks for an already existing
+        process running controller.py, raises if multiple are found
+        '''
+        if not pid and nset == nstop:
+            pids = find_process('controller.py')
+            if len(pids) == 1:
+                print('Controller process already running, disabling Set button')
+                return nset+1 if nset else 1
+            elif len(pids) > 1:
+                print('Two or more running Controller processes running, will display the most recent')
+                return nset+1 if nset else 1
+
+        raise PreventUpdate
+
+
     @app.callback([Output('dropdown-device-selection', 'options'),
                    Output('dropdown-device-selection', 'disabled'),
                    Output('dropdown-meas-selection', 'disabled'),
                    Output('input-device-value', 'disabled'),
                    Output('input-device-step', 'disabled'),
-                   Output('input-device-time', 'disabled'),
-                   Output('button-set-device', 'disabled')],
+                   Output('input-device-time', 'disabled')],
                   [Input('button-stop-daq', 'disabled')])
     def enable_device_controls(daq_disable):
         '''
@@ -167,7 +265,7 @@ def register_callbacks(app):
             dev_options = [{'label':f.split('/')[-1], 'value':f} for f in dev_files]
 
         # Set the device controls
-        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
+        return dev_options, daq_disable, daq_disable, daq_disable, daq_disable, daq_disable
 
 
     @app.callback(Output('dropdown-meas-selection', 'options'),
@@ -184,31 +282,6 @@ def register_callbacks(app):
             meas_options = [{'label':k, 'value':k} for k in meas_keys]
 
         return meas_options
-
-
-    @app.callback(Output('button-set-device', 'label'),
-                  [Input('button-set-device', 'n_clicks')],
-                  [State('dropdown-device-selection', 'value'),
-                   State('dropdown-meas-selection', 'value'),
-                   State('input-device-value', 'value'),
-                   State('input-device-step', 'value'),
-                   State('input-device-time', 'value')])
-    def device_controller(nclicks, device, quantity, value, step, time):
-        '''
-        App callback that sets the value of the selected device
-        according to the value displayed in the input boxes
-        '''
-        # If the necessary arguments are not set, skip
-        if nclicks is None or not device or not quantity:
-            return ''
-
-        # Run the controller script, freeze the device controls while it runs
-        device = device.split('/')[-1]
-        args = ['exec', 'python3', os.environ['DAQ_BASEDIR']+'/controller.py', '--device', device,\
-            '--quantity', quantity, '--value', str(value), '--step', str(step), '--time', str(time)]
-        pid = subprocess.Popen(' '.join(args), shell=True).pid
-
-        return ''
 
 
     @app.callback([Output('dropdown-file-selection', 'options'),

@@ -214,10 +214,7 @@ def div_daq_controls():
             ),
 
             # Invisible div that stores the DAQ process ID
-            dcc.Store(id='store-daq-id'),
-
-            # Invisible div that stores the device controller process ID
-            dcc.Store(id='store-controller-id')
+            dcc.Store(id='store-daq-id')
         ])
     ],
         className="three columns",
@@ -376,7 +373,11 @@ def div_device_controls():
                         "margin-bottom": "40px"
                     }
                 )
-            ])
+
+            ]),
+
+            # Invisible div that stores the device controller process ID
+            dcc.Store(id='store-controller-id')
         ],
             id='div-file-control-0',
             className='row',
