@@ -326,26 +326,29 @@ def register_callbacks(app):
         '''
         if daq_file:
             try:
+                # Check that the DAQ file minimally contains a time column
                 daq_df = pd.read_csv(daq_file)
-                time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
-                daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
                 daq_keys = daq_df.keys().to_list()
-                daq_values = {key:daq_df[key].iloc[-1] for key in daq_keys}
                 if 'time' not in daq_keys:
                     print('No time stamps in the data, must provide a \'time\' column')
                     return None, [], {}
+
+                # Restrict the range of time to the requested interval
+                time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
+                daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
+                daq_values = {key:daq_df[key].iloc[-1] for key in daq_keys}
+
+                # If there is no datetime column in the file (older files), add it
+                if 'datetime' not in daq_keys:
+                    get_datetimes(daq_file, daq_df)
+                else:
+                    daq_df['datetime'] = pd.to_datetime(daq_df['datetime'], format='%Y-%m-%d_%H-%M-%S.%f')
+                    daq_keys.remove('datetime')
+
+                # Store the DAQ data as a JSON string in an invinsible div
                 daq_keys.remove('time')
-                try:
-                    sdatetime = pd.to_datetime(os.path.basename(daq_file)[:19], format='%Y-%m-%d_%H-%M-%S')
-                    times = np.array(daq_df['time'])
-                    stime = pd.read_csv(daq_file, nrows=1)['time'].iloc[0]
-                    times -= stime
-                    datetimes = [sdatetime + datetime.timedelta(seconds=t) for t in times]
-                    daq_df['datetime'] = datetimes
-                except ValueError:
-                    print('Could not create datetimes, will draw relative time')
-                    pass
                 daq_data = daq_df.to_json(orient='split', index=False)
+
                 return daq_data, daq_keys, daq_values
             except FileNotFoundError:
                 print('File not found: {}'.format(daq_file))
@@ -452,7 +455,7 @@ def register_callbacks(app):
         if daq_values:
             values = []
             for key, value in daq_values.items():
-                if key == 'time': continue
+                if key == 'time' or key == 'datetime': continue
                 name, unit = key_elements(key)
                 val = daq_values[key]
                 values.append(html.Div(f"{val:.4f} {unit}",

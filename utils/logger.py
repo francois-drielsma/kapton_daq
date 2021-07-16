@@ -45,7 +45,7 @@ class CSVData:
                     self._fout.write(',')
                     self._str += ','
                 self._fout.write(key)
-                self._str+='{:f}'
+                self._str+='{:f}' if key is not 'datetime' else '{}'
             self._fout.write('\n')
             self._str+='\n'
 

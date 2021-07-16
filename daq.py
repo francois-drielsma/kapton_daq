@@ -123,7 +123,7 @@ class DAQ:
         inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
         Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
         Control = namedtuple('Control', 'inst, meas, control, vinst, vmeas, vprobe, unit, name')
-        self._data_keys = ['time']
+        self._data_keys = ['time', 'datetime']
         self._probes = []
         self._controls = []
         for k, i in self._cfg['instruments'].items():
@@ -329,8 +329,9 @@ class DAQ:
 
             # Append the elapsed time
             curr_time = time.time()
-            delta_t = curr_time-init_time
-            readings = [delta_t]+readings
+            delta_t   = curr_time-init_time
+            dt        = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
+            readings  = [delta_t, dt]+readings
 
             # Save readings to disk
             self.record(readings)

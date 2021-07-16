@@ -1,4 +1,7 @@
+import os
 import psutil
+import datetime
+import numpy as np
 import pandas as pd
 from plotly import subplots
 import plotly.graph_objs as go
@@ -57,6 +60,22 @@ def kill_process(pid):
         time.sleep(0.1)
     except:
         pass
+
+
+def get_datetimes(daq_file,
+                  daq_df):
+    '''
+    Converts the relative time column in a data
+    file to a absolute datetime column
+    '''
+    try:
+        sdatetime = pd.to_datetime(os.path.basename(daq_file)[:19], format='%Y-%m-%d_%H-%M-%S')
+    except ValueError:
+        print('Could not create datetimes, will draw relative time')
+        return
+    times = np.array(daq_df['time'])
+    datetimes = [sdatetime + datetime.timedelta(seconds=t-times[0]) for t in times]
+    daq_df['datetime'] = datetimes
 
 
 def update_graph(daq_data,
