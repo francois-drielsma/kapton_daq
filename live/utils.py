@@ -72,13 +72,14 @@ def get_datetimes(daq_file,
         sdatetime = pd.to_datetime(os.path.basename(daq_file)[:19], format='%Y-%m-%d_%H-%M-%S')
     except ValueError:
         print('Could not create datetimes, will draw relative time')
-        return
+        return False
     times = np.array(daq_df['time'])
     datetimes = [sdatetime + datetime.timedelta(seconds=t-times[0]) for t in times]
     daq_df['datetime'] = datetimes
+    return True
 
 
-def update_graph(daq_data,
+def update_graph(daq_df,
                  daq_keys,
                  display_mode,
                  checklist_display_options):
@@ -91,11 +92,10 @@ def update_graph(daq_data,
     :return: dcc Graph object containing the updated figures
     """
     # Check that there is data, return empty graph otherwise
-    if not daq_data or not daq_keys:
+    if daq_df is None or not daq_keys:
         return dcc.Graph(id='graph-daq')
 
     # Import the data, get the keys, check that there is something to display
-    daq_df = pd.read_json(daq_data, orient='split')
     keys = []
     for key in daq_keys:
         if key in checklist_display_options:
@@ -107,7 +107,7 @@ def update_graph(daq_data,
     # Use time as the x axis
     xaxis_title = 'Time [s]'
     times = daq_df['time']
-    if 'datetime' in daq_df:
+    if 'datetime' in daq_df.keys():
         xaxis_title = ''
         times = daq_df['datetime']
 

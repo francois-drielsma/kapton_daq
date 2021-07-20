@@ -476,7 +476,6 @@ layout = html.Div([
         ),
 
         # Invisible div that stores the JSON-serialized dataframe of DAQ data
-        dcc.Store(id='store-daq-data'),
         dcc.Store(id='store-daq-keys'),
         dcc.Store(id='store-daq-values'),
 

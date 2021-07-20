@@ -311,51 +311,33 @@ def register_callbacks(app):
         return data_options, data_file
 
 
-    @app.callback([Output('store-daq-data', 'data'),
-                   Output('store-daq-keys', 'data'),
-                   Output('store-daq-values', 'data')],
+    @app.callback([Output('store-daq-keys', 'data')],
                   [Input('interval-update', 'n_intervals'),
-                   Input('dropdown-file-selection', 'value'),
-                   Input('input-time-range', 'value'),
-                   Input('dropdown-time-range', 'value')])
-    def update_data_file(_, daq_file, time_value, time_unit):
+                   Input('dropdown-file-selection', 'value')])
+    def update_data_keys(_, daq_file):
         '''
-        App callback that reads the CSV data file
-        when the file selection dropdown is activatived
-        or the automatic reload is triggered
+        App callback that reads the CSV data file header
+        when the file dropdown changes to update the keys
         '''
         if daq_file:
             try:
                 # Check that the DAQ file minimally contains a time column
-                daq_df = pd.read_csv(daq_file)
+                daq_df = pd.read_csv(daq_file, nrows=1)
                 daq_keys = daq_df.keys().to_list()
                 if 'time' not in daq_keys:
                     print('No time stamps in the data, must provide a \'time\' column')
-                    return None, [], {}
-
-                # Restrict the range of time to the requested interval
-                time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
-                daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
-                daq_values = {key:daq_df[key].iloc[-1] for key in daq_keys}
-
-                # If there is no datetime column in the file (older files), add it
-                if 'datetime' not in daq_keys:
-                    get_datetimes(daq_file, daq_df)
-                else:
-                    daq_df['datetime'] = pd.to_datetime(daq_df['datetime'], format='%Y-%m-%d_%H-%M-%S.%f')
+                    return []
+                daq_keys.remove('time')
+                if 'datetime' in daq_keys:
                     daq_keys.remove('datetime')
 
-                # Store the DAQ data as a JSON string in an invinsible div
-                daq_keys.remove('time')
-                daq_data = daq_df.to_json(orient='split', index=False)
-
-                return daq_data, daq_keys, daq_values
+                return [daq_keys]
             except FileNotFoundError:
                 print('File not found: {}'.format(daq_file))
             except pd.errors.EmptyDataError as error:
                 pass
 
-        return None, [], {}
+        return [[]]
 
 
     @app.callback([Output('checklist-display-options-daq', 'options'),
@@ -401,26 +383,40 @@ def register_callbacks(app):
             return 'DAQ log will appear here when available...'
 
 
-    @app.callback(Output('div-graph-daq', 'children'),
+    @app.callback([Output('div-graph-daq', 'children'),
+                   Output('store-daq-values', 'data')],
                   [Input('radio-display-mode-daq', 'value'),
-                   Input('checklist-display-options-daq', 'value')],
-                  [State('store-daq-data', 'data'),
-                   State('store-daq-keys', 'data')])
-    def update_div_graph(display_mode,
-                         checklist_display_options,
-                         daq_data,
-                         daq_keys):
+                   Input('checklist-display-options-daq', 'value'),
+                   Input('input-time-range', 'value'),
+                   Input('dropdown-time-range', 'value')],
+                  [State('store-daq-keys', 'data'),
+                   State('dropdown-file-selection', 'value')])
+    def update_div_graph(display_mode, checklist_display_options, time_value, time_unit, daq_keys, daq_file):
         '''
         App callback that updates the graph
-        whenever the page is refreshed (inherits from store-daq-data)
+        whenever the page is refreshed
         '''
-        # Update the graph div
-        graph = update_graph(daq_data,
-                             daq_keys,
-                             display_mode,
-                             checklist_display_options)
+        # If there are no daq_keys, return blank graph
+        if daq_keys is None or not len(daq_keys):
+            return (update_graph(None, [], '', '')), {}
 
-        return [graph]
+        # Read in the datafile
+        daq_df = pd.read_csv(daq_file)
+
+        # Restrict the range of time to the requested interval
+        time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
+        daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
+        daq_values = {key:daq_df[key].iloc[-1] for key in daq_df.keys()}
+
+        # If there is no datetime column in the file (older files), add it
+        if 'datetime' not in daq_df.keys():
+            get_datetimes(daq_file, daq_df)
+        else:
+            daq_df['datetime'] = pd.to_datetime(daq_df['datetime'], format='%Y-%m-%d_%H-%M-%S.%f')
+
+        # Update the graph
+        graph = update_graph(daq_df, daq_keys, display_mode, checklist_display_options)
+        return [graph], daq_values
 
 
     @app.callback(Output('div-time-display', 'children'),
@@ -428,7 +424,7 @@ def register_callbacks(app):
     def update_div_time_display(daq_values):
         '''
         App callback that prints the elapsed time
-        whenever the page is refreshed (inherits from store-daq-data)
+        whenever the page is refreshed
         '''
         # If the DAQ is running, get the elapsed time
         elapsed_time = 0
@@ -446,7 +442,7 @@ def register_callbacks(app):
     def update_div_last_daq_readings(daq_values):
         '''
         App callback that prints the current values of the measurements
-        whenever the page is refreshed (inherits from store-daq-data)
+        whenever the page is refreshed
         '''
         div = [html.H6("Last readings",
                          style={'font-weight': 'bold',
