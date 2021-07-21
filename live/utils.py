@@ -63,7 +63,8 @@ def kill_process(pid):
 
 
 def get_datetimes(daq_file,
-                  daq_df):
+                  daq_df,
+                  starttime):
     '''
     Converts the relative time column in a data
     file to a absolute datetime column
@@ -74,7 +75,7 @@ def get_datetimes(daq_file,
         print('Could not create datetimes, will draw relative time')
         return False
     times = np.array(daq_df['time'])
-    datetimes = [sdatetime + datetime.timedelta(seconds=t-times[0]) for t in times]
+    datetimes = [sdatetime + datetime.timedelta(seconds=t-starttime) for t in times]
     daq_df['datetime'] = datetimes
     return True
 

@@ -404,13 +404,14 @@ def register_callbacks(app):
         daq_df = pd.read_csv(daq_file)
 
         # Restrict the range of time to the requested interval
+        starttime = daq_df['time'].iloc[0]
         time_int = datetime.timedelta(**{time_unit:time_value}).total_seconds()
         daq_df = daq_df[daq_df['time'].iloc[-1]-daq_df['time'] < time_int]
         daq_values = {key:daq_df[key].iloc[-1] for key in daq_df.keys()}
 
         # If there is no datetime column in the file (older files), add it
         if 'datetime' not in daq_df.keys():
-            get_datetimes(daq_file, daq_df)
+            get_datetimes(daq_file, daq_df, starttime)
         else:
             daq_df['datetime'] = pd.to_datetime(daq_df['datetime'], format='%Y-%m-%d_%H-%M-%S.%f')
 
