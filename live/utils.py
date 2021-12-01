@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from plotly import subplots
 import plotly.graph_objs as go
-import dash_core_components as dcc
+from dash import dcc
 
 def key_elements(key):
     '''

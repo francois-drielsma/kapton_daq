@@ -6,7 +6,7 @@ import subprocess
 import datetime
 import numpy as np
 import pandas as pd
-import dash_html_components as html
+from dash import html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from live.utils import *
