@@ -3,7 +3,7 @@ import time
 import signal
 import argparse
 import pandas as pd
-import quantities as pq
+import pint
 
 class Controller:
     """
@@ -52,12 +52,10 @@ class Controller:
         - if it is a `float`, give it the right units;
         - if it is a `Quantity`, rescale to the right units.
         """
-        if not isinstance(value, pq.Quantity):
-            return pq.Quantity(value, units)
+        if not isinstance(value, pint.Quantity):
+            return pint.Quantity(value, units)
         if units != value.units:
-            return value.rescale(units)
-        if isinstance(units, pq.unitquantity.UnitTemperature):
-            return ik.util_fns.convert_temperature(value, units)
+            return value.to(units)
         return value
 
     def parse_config(self):

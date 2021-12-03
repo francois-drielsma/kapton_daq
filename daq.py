@@ -5,8 +5,8 @@ import signal
 import datetime
 import yaml
 import argparse
+import pint
 import instruments as ik
-import quantities as pq
 from collections import namedtuple
 from utils.logger import Logger, CSVData
 from utils.virtual_device import VirtualDevice
@@ -70,12 +70,10 @@ class DAQ:
         - if it is a `float`, give it the right units;
         - if it is a `Quantity`, rescale to the right units.
         """
-        if not isinstance(value, pq.Quantity):
-            return pq.Quantity(value, units)
+        if not isinstance(value, pint.Quantity):
+            return pint.Quantity(value, units)
         if units != value.units:
-            return value.rescale(units)
-        if isinstance(units, pq.unitquantity.UnitTemperature):
-            return ik.util_fns.convert_temperature(value, units)
+            return value.to(units)
         return value
 
     def parse_config(self):
@@ -153,7 +151,8 @@ class DAQ:
             # Initalize a probe for each measurement
             for k, m in i['measurements'].items():
                 self.log("Setting up {} measurement of name {}".format(k, m['name']))
-                unit = getattr(pq, m['unit'])
+                unit = pint.Unit(m['unit'])
+                print(m['unit'], unit)
                 meas, probe = None, None
                 if i['type'] == 'instrument':
                     probe = lambda inst, _: inst.measure()
@@ -177,12 +176,12 @@ class DAQ:
                         vprobe = lambda vinst, vmeas: vinst.get_update(vmeas)
                         self._controls.append(Control(inst, meas, control, vinst, k, vprobe, unit, m['name']))
                         if 'value' in m:
-                            self.log("Setting {} to {} {}".format(m['name'], m['value'], unit.u_symbol))
+                            self.log("Setting {} to {} {}".format(m['name'], m['value'], format(unit, '~')))
                             meas.fset(inst, m['value'])
                             vinst.set(k, m['value'])
 
                 # Append the list of data keys
-                self._data_keys.append('{} [{}]'.format(m['name'], unit.u_symbol))
+                self._data_keys.append('{} [{}]'.format(m['name'], format(unit, '~')))
 
                 # Append a probe object
                 self._probes.append(Probe(inst, meas, probe, unit, m['name']))
@@ -268,7 +267,7 @@ class DAQ:
         for p in self._probes:
             for i in range(self._max_fails):
                 try:
-                    readings.append(float(self.read(p)))
+                    readings.append(float(self.read(p).magnitude))
                     break
                 except Exception as e:
                     if self._killer.kill_now or not self.handle_fail(p, e, i+1, 'read'):
@@ -292,7 +291,7 @@ class DAQ:
             if update:
                 for i in range(self._max_fails):
                     try:
-                        self.log("Setting {} to {} {}".format(c.name, value, c.unit.u_symbol))
+                        self.log("Setting {} to {} {}".format(c.name, value, format(c.unit, '~')))
                         c.control(c.inst, c.meas, value)
                         break
                     except Exception as e:

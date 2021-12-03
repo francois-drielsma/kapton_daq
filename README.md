@@ -156,7 +156,7 @@ dictionary expressed in the YAML file-format which contains:
       - `args`: protocol parameters
     - `measurements`: dictionary of measurements to take, each containing:
       - `quantity`: `IK` quantity to measure (e.g. `voltage_dc`, `temperature`, etc.)
-      - `unit`: `quantities` unit of measurement (e.g. `millivolt`, `kelvin`, etc.)
+      - `unit`: `pint.Quantity` unit of measurement (e.g. `millivolt`, `kelvin`, etc.)
       - `name`: name of the variable to measure (CSV output column name)
       - `value` (optional): sets initial value of measurement (if power supply or virtual)
       - `channel` (optional): specifies power supply channel id
