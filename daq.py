@@ -44,6 +44,7 @@ class DAQ:
         # Initialize probes
         self._probes     = []   # Instrument probes
         self._controls   = []   # Instrument controls
+        self._functions  = []   # Derived functions
         self._data_keys  = []   # List of measurement keys
         self.initialize_probes()
 
@@ -121,6 +122,7 @@ class DAQ:
         inst_types = ['instrument', 'multimeter', 'power_supply', 'virtual']
         Probe = namedtuple('Probe', 'inst, meas, probe, unit, name')
         Control = namedtuple('Control', 'inst, meas, control, vinst, vmeas, vprobe, unit, name')
+        Function = namedtuple('Function', 'formula, variables, unit, name')
         self._data_keys = ['time', 'datetime']
         self._probes = []
         self._controls = []
@@ -152,7 +154,6 @@ class DAQ:
             for k, m in i['measurements'].items():
                 self.log("Setting up {} measurement of name {}".format(k, m['name']))
                 unit = pint.Unit(m['unit'])
-                print(m['unit'], unit)
                 meas, probe = None, None
                 if i['type'] == 'instrument':
                     probe = lambda inst, _: inst.measure()
@@ -185,6 +186,24 @@ class DAQ:
 
                 # Append a probe object
                 self._probes.append(Probe(inst, meas, probe, unit, m['name']))
+
+        # Initialize a function object for each derived quantity
+        self._functions = []
+        for k, f in self._cfg['functions'].items():
+            self.log("Setting up {} function with formula {}".format(f['name'], f['formula'].format(*f['variables'])))
+            unit = pint.Unit(f['unit'])
+
+            # Check that the variables in the function exist
+            names = [p.name for p in self._probes]
+            for v in f['variables']:
+                if v not in names:
+                    raise KeyError('Function variable {} not found in the list of probe names'.format(v))
+
+            # Append the list of data keys
+            self._data_keys.append('{} [{}]'.format(f['name'], format(unit, '~')))
+
+            # Append a probe object
+            self._functions.append(Function(f['formula'], f['variables'], unit, f['name']))
 
     def initialize_output(self):
         """
@@ -236,6 +255,22 @@ class DAQ:
         Reads a specific probe.
         """
         return self._convert_units(probe.probe(probe.inst, probe.meas), probe.unit)
+
+    def evaluate(self, function, readings):
+        """
+        Evaluate a specific function.
+        """
+        variables = []
+        names     = [k.split(' [')[0] for k in self._data_keys[2:]] # Skip time and date
+        for v in function.variables:
+            index    = names.index(v)
+            variable = self._convert_units(readings[index], self._probes[index].unit)
+            variables.append(variable)
+        try:
+            value = eval(function.formula.format(*['variables[{}]'.format(i) for i in range(len(variables))]))
+        except ZeroDivisionError:
+            value = 0 # Just return 0 in the case of a 0 division
+        return self._convert_units(value, function.unit)
 
     def handle_fail(self, object, error, fail_count, type):
         """
@@ -300,6 +335,16 @@ class DAQ:
 
         return True
 
+    def call_functions(self, readings):
+        """
+        Call the functions on the stored readings
+        """
+        values = []
+        for f in self._functions:
+            values.append(float(self.evaluate(f, readings).magnitude))
+
+        return values
+
     def run(self):
         """
         Main DAQ function.
@@ -326,11 +371,14 @@ class DAQ:
             if not readings:
                 break
 
+            # Append the function values
+            readings += self.call_functions(readings)
+
             # Append the elapsed time
             curr_time = time.time()
             delta_t   = curr_time-init_time
             dt        = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
-            readings  = [delta_t, dt]+readings
+            readings  = [delta_t, dt] + readings
 
             # Save readings to disk
             self.record(readings)
