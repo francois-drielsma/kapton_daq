@@ -190,7 +190,7 @@ class DAQ:
         # Initialize a function object for each derived quantity
         self._functions = []
         for k, f in self._cfg['functions'].items():
-            self.log("Setting up {} function with formula {}".format(f['name'], f['formula'].format(*f['variables'])))
+            self.log("Setting up {} function with formula \"{}\"".format(f['name'], f['formula'].format(*f['variables'])))
             unit = pint.Unit(f['unit'])
 
             # Check that the variables in the function exist
@@ -261,7 +261,7 @@ class DAQ:
         Evaluate a specific function.
         """
         variables = []
-        names     = [k.split(' [')[0] for k in self._data_keys[2:]] # Skip time and date
+        names     = [p.name for p in self._probes]
         for v in function.variables:
             index    = names.index(v)
             variable = self._convert_units(readings[index], self._probes[index].unit)
