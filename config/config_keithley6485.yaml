@@ -1,6 +1,6 @@
 sampling_time: 0.0
 refresh_rate: 0.0
-output_name: keithley6484_daq
+output_name: keithley6485_daq
 instruments:
   keithley6485:
     type: instrument
