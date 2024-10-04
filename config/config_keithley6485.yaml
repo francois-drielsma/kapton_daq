@@ -1,0 +1,18 @@
+sampling_time: 0.0
+refresh_rate: 0.0
+output_name: keithley6484_daq
+instruments:
+  keithley6485:
+    type: instrument
+    make: keithley
+    model: Keithley6485
+    comm:
+      type: serial
+      args:
+        port: /dev/ttyUSB0
+        baud: 9600
+    measurements:
+      current:
+        quantity: current_dc
+        unit: nanoamp
+        name: Current

@@ -189,21 +189,22 @@ class DAQ:
 
         # Initialize a function object for each derived quantity
         self._functions = []
-        for k, f in self._cfg['functions'].items():
-            self.log("Setting up {} function with formula \"{}\"".format(f['name'], f['formula'].format(*f['variables'])))
-            unit = pint.Unit(f['unit'])
+        if 'functions' in self._cfg:
+            for k, f in self._cfg['functions'].items():
+                self.log("Setting up {} function with formula \"{}\"".format(f['name'], f['formula'].format(*f['variables'])))
+                unit = pint.Unit(f['unit'])
 
-            # Check that the variables in the function exist
-            names = [p.name for p in self._probes]
-            for v in f['variables']:
-                if v not in names:
-                    raise KeyError('Function variable {} not found in the list of probe names'.format(v))
+                # Check that the variables in the function exist
+                names = [p.name for p in self._probes]
+                for v in f['variables']:
+                    if v not in names:
+                        raise KeyError('Function variable {} not found in the list of probe names'.format(v))
 
-            # Append the list of data keys
-            self._data_keys.append('{} [{}]'.format(f['name'], format(unit, '~')))
+                # Append the list of data keys
+                self._data_keys.append('{} [{}]'.format(f['name'], format(unit, '~')))
 
-            # Append a probe object
-            self._functions.append(Function(f['formula'], f['variables'], unit, f['name']))
+                # Append a probe object
+                self._functions.append(Function(f['formula'], f['variables'], unit, f['name']))
 
     def initialize_output(self):
         """
