@@ -25,10 +25,11 @@ def find_process(name):
         if proc.name() == 'python3':
             proc_dict = proc.as_dict(['pid', 'cmdline'])
             pid = None
-            for string in proc_dict['cmdline']:
-                if name in string:
-                    pid = proc_dict['pid']
-                    break
+            if proc_dict['cmdline']:
+                for string in proc_dict['cmdline']:
+                    if name in string:
+                        pid = proc_dict['pid']
+                        break
             if pid:
                 pids.append(pid)
 
