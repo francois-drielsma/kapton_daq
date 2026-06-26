@@ -29,7 +29,7 @@ class DAQ:
         self._max_fails   = 16   # Maximum allowed number of failed reads
         self._output_name = ''   # Output file name
         self._output      = None # Output file
-        self._max_count   = -1   # Maximum number of entries in a single data file (-1: no limit)
+        self._max_count   = 86400   # Maximum number of entries in a single data file (-1: no limit)
         self._killer      = None # Active instance of the Killer subclass
 
         # Parse configuration
