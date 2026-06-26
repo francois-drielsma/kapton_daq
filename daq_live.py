@@ -28,4 +28,4 @@ args = parser.parse_args()
 
 # Run the server
 if __name__ == '__main__':
-    app.run_server(debug=True, port=args.port, host=args.host)
+    app.run(debug=True, port=args.port, host=args.host)
