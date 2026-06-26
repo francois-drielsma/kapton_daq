@@ -139,7 +139,13 @@ class Controller:
         for i in range(self._max_fails):
             try:
                 device = pd.read_csv(self._device)
-                device[self._quantity].iloc[-1] = value
+                prev_line = device.shape[0] - 1
+                for quantity in device.keys():
+                    prev_value = device[quantity][prev_line]
+                    if quantity == self._quantity:
+                        device.loc[-1, quantity] = value
+                    else:
+                        device.loc[-1, quantity] = prev_value
                 device.to_csv(self._device, index=False)
                 break
             except Exception as e:
